@@ -1,0 +1,132 @@
+name: Build FlowBreak DMG
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test, build & package
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Unit tests
+        run: swift test --parallel
+
+      - name: Build universal app
+        run: Scripts/build_universal.sh
+
+      - name: Import Developer ID certificate (optional)
+        id: signing
+        env:
+          CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          if [[ -z "$CERT_P12" ]]; then
+            echo "No signing secrets configured: producing an ad-hoc signed development DMG."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Sign, notarize & package (Developer ID)
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: Scripts/sign_and_notarize.sh
+
+      - name: Package development DMG (ad-hoc signed)
+        if: steps.signing.outputs.enabled != 'true'
+        run: Scripts/build_dmg.sh
+
+      - name: Smoke-test the DMG
+        run: |
+          DMG="$(ls build/dmg/*.dmg | head -n1)"
+          MOUNT="$(mktemp -d)"
+          hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$MOUNT"
+          test -x "$MOUNT/FlowBreak.app/Contents/MacOS/FlowBreak"
+          test -L "$MOUNT/Applications"
+          codesign --verify --strict "$MOUNT/FlowBreak.app"
+          lipo -archs "$MOUNT/FlowBreak.app/Contents/MacOS/FlowBreak"
+          # Launch briefly to make sure it starts without crashing.
+          "$MOUNT/FlowBreak.app/Contents/MacOS/FlowBreak" --smoke-test
+          hdiutil detach "$MOUNT"
+          echo "DMG_PATH=$DMG" >> "$GITHUB_ENV"
+          echo "DMG_NAME=$(basename "$DMG")" >> "$GITHUB_ENV"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DMG_NAME }}
+          path: |
+            build/dmg/*.dmg
+            build/dmg/*.sha256
+          if-no-files-found: error
+
+      - name: Publish "latest build" release (default branch)
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+          git push origin :refs/tags/latest-build 2>/dev/null || true
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          Automatic build of \`${GITHUB_SHA::7}\` (FlowBreak $VERSION, build ${{ github.run_number }}).
+
+          **Download \`$DMG_NAME\` below**, open it, and drag FlowBreak to Applications.
+
+          This build is ad-hoc signed and **not notarized** unless the file name lacks \`-unsigned\`.
+          On first launch macOS will block it: on macOS 15+ go to *System Settings → Privacy & Security → Open Anyway*;
+          on macOS 13–14 Control-click the app → Open. Or run \`xattr -dr com.apple.quarantine /Applications/FlowBreak.app\`.
+
+          SHA-256: \`$(cut -d' ' -f1 "$DMG_PATH.sha256")\`
+          NOTES
+          gh release create latest-build "$DMG_PATH" "$DMG_PATH.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "FlowBreak $VERSION — latest build" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --latest
+
+      - name: Publish versioned release (tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$DMG_PATH" "$DMG_PATH.sha256" \
+            --title "FlowBreak $GITHUB_REF_NAME" \
+            --generate-notes
