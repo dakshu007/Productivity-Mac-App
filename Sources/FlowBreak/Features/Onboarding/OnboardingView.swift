@@ -7,11 +7,16 @@ struct OnboardingView: View {
     @EnvironmentObject private var model: AppModel
     var onFinish: () -> Void
 
-    private enum Page: Int, CaseIterable {
+    enum Page: Int, CaseIterable {
         case welcome, rhythm, interval, tracking, notifications, ready
     }
 
-    @State private var page: Page = .welcome
+    @State private var page: Page
+
+    init(initialPage: Page = .welcome, onFinish: @escaping () -> Void) {
+        self.onFinish = onFinish
+        _page = State(initialValue: initialPage)
+    }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {

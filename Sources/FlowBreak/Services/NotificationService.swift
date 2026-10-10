@@ -66,9 +66,9 @@ final class NotificationService {
     private(set) var authorization: NotificationAuthorization = .unknown
     var onAuthorizationChange: ((NotificationAuthorization) -> Void)?
 
-    init() {
+    init(enabled: Bool = true) {
         // UNUserNotificationCenter crashes when there is no bundle identifier.
-        guard Bundle.main.bundleIdentifier != nil, Bundle.main.bundleURL.pathExtension == "app" else {
+        guard enabled, Bundle.main.bundleIdentifier != nil, Bundle.main.bundleURL.pathExtension == "app" else {
             authorization = .unavailable
             return
         }

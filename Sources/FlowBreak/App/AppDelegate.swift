@@ -8,8 +8,12 @@ enum FlowBreakMain {
     private static var delegate: AppDelegate?
 
     static func main() {
-        if CommandLine.arguments.contains("--smoke-test") {
+        let arguments = CommandLine.arguments
+        if arguments.contains("--smoke-test") {
             exit(SmokeTest.run())
+        }
+        if let index = arguments.firstIndex(of: "--render-previews"), index + 1 < arguments.count {
+            exit(PreviewRenderer.run(outputDirectory: URL(fileURLWithPath: arguments[index + 1])))
         }
         let app = NSApplication.shared
         let delegate = AppDelegate()

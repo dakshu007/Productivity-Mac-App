@@ -372,6 +372,22 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    // MARK: - Screenshot rendering support
+
+    /// Drives the engine with explicit timestamps. Used only by `--render-previews`,
+    /// which runs against a temporary store, never the user's data.
+    func driveForPreview(now: Date, _ body: (TimerEngine) -> Void) {
+        body(engine)
+        self.now = now
+        refresh()
+    }
+
+    func setPreviewState(notificationStatus: NotificationAuthorization, usage: [UsageSample]? = nil, error: String? = nil) {
+        self.notificationStatus = notificationStatus
+        if let usage { self.usage = usage }
+        self.errorMessage = error
+    }
+
     // MARK: - Internals
 
     private func reconcile(reason: String?) {

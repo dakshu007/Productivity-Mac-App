@@ -111,6 +111,15 @@ struct GuidedBreakView: View {
     @State private var run: ActivityRun?
     @State private var finished: Set<BreakActivity.Kind> = []
 
+    init(onClose: @escaping () -> Void, initialActivity: BreakActivity.Kind? = nil, startedAt: Date = Date()) {
+        self.onClose = onClose
+        if let kind = initialActivity, let activity = BreakActivity.all.first(where: { $0.kind == kind }) {
+            var run = ActivityRun(activity: activity)
+            run.start(at: startedAt)
+            _run = State(initialValue: run)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             switch model.state.phase {

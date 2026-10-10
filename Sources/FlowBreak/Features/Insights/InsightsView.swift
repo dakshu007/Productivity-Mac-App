@@ -5,8 +5,12 @@ import SwiftUI
 /// Daily insights. Every number is derived from stored session records.
 struct InsightsView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var range: InsightsRange = .today
+    @State private var range: InsightsRange
     @State private var showMethodology = false
+
+    init(initialRange: InsightsRange = .today) {
+        _range = State(initialValue: initialRange)
+    }
 
     var body: some View {
         let summary = model.summary(for: range)

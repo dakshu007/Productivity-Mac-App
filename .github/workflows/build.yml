@@ -38,6 +38,22 @@ jobs:
       - name: Build universal app
         run: Scripts/build_universal.sh
 
+      - name: Render UI screenshots (every state, light & dark)
+        continue-on-error: true
+        run: |
+          build/FlowBreak.app/Contents/MacOS/FlowBreak --render-previews build/screenshots
+          mkdir -p build/release-extras
+          (cd build && zip -qr release-extras/FlowBreak-screenshots.zip screenshots)
+          ls build/screenshots | head -80
+
+      - name: Upload screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlowBreak-screenshots
+          path: build/screenshots
+          if-no-files-found: warn
+
       - name: Import Developer ID certificate (optional)
         id: signing
         env:
@@ -116,7 +132,9 @@ jobs:
 
           SHA-256: \`$(cut -d' ' -f1 "$DMG_PATH.sha256")\`
           NOTES
-          gh release create latest-build "$DMG_PATH" "$DMG_PATH.sha256" \
+          EXTRAS=()
+          [[ -f build/release-extras/FlowBreak-screenshots.zip ]] && EXTRAS+=(build/release-extras/FlowBreak-screenshots.zip)
+          gh release create latest-build "$DMG_PATH" "$DMG_PATH.sha256" "${EXTRAS[@]}" \
             --target "$GITHUB_SHA" \
             --title "FlowBreak $VERSION — latest build" \
             --notes-file "$RUNNER_TEMP/notes.md" \
