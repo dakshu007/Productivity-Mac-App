@@ -208,7 +208,7 @@ enum PreviewRenderer {
             Scenario(name: "50-notification-concept", size: NSSize(width: 420, height: 230)) { _ in
                 AnyView(NotificationConceptView())
             },
-            Scenario(name: "51-menu-bar-items", size: NSSize(width: 420, height: 150)) { _ in
+            Scenario(name: "51-menu-bar-items", size: NSSize(width: 480, height: 150)) { _ in
                 AnyView(MenuBarItemsConceptView())
             },
         ]

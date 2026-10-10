@@ -11,6 +11,8 @@ This file is updated alongside the code. It says plainly what is done and what h
   3. A DMG is packaged.
   4. The DMG is mounted and checked for the app, the `/Applications` link, a valid ad-hoc code signature, and both architectures.
   5. The packaged binary is launched with `--smoke-test`, which exercises the timer engine and persistence and renders the menu-bar icon.
+  6. The built app renders every UI state in light and dark with `--render-previews`, using a temporary store. The screenshots are uploaded as an artifact and attached to the release. These were reviewed visually during development; curated sheets are in `Design/Screenshots/`.
+- Latest verified CI run: 44/44 XCTest cases passed. The universal (x86_64 + arm64) build succeeded, the DMG verified and mounted, and the smoke test passed.
 - **Not verified by CI:** interactive UI behaviour (popover, windows, notifications appearing, real sleep/wake, launch at login, VoiceOver). These need a person on a real Mac; see the manual checklist below.
 
 ## Signing

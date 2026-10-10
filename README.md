@@ -6,7 +6,7 @@ A calm, native macOS menu-bar app that helps you focus in sessions, take real br
 
 ## Download
 
-**[Releases → latest build](../../releases/latest)**: download `FlowBreak-<version>-unsigned.dmg`, open it, and drag **FlowBreak** to **Applications**.
+**[⬇︎ FlowBreak-1.0.0-unsigned.dmg](https://github.com/dakshu007/Productivity-Mac-App/releases/download/latest-build/FlowBreak-1.0.0-unsigned.dmg)** (from the [latest build release](https://github.com/dakshu007/Productivity-Mac-App/releases/tag/latest-build), rebuilt automatically on every push to the default branch). Open it and drag **FlowBreak** to **Applications**.
 
 Every push also builds a DMG artifact. Open the newest run under **Actions → Build FlowBreak DMG** and download it from *Artifacts*. GitHub delivers artifacts as a `.zip` that contains the `.dmg`.
 
@@ -21,6 +21,19 @@ CI builds are **ad-hoc signed and not notarized** because there's no Apple Devel
 FlowBreak runs in the **menu bar** (top-right, a leaf inside an open circle). It has no Dock icon unless you enable one in Settings.
 
 Requirements: macOS 13 Ventura or later. Universal binary for Apple Silicon and Intel.
+
+## Screenshots
+
+Rendered from the real app by CI (`FlowBreak --render-previews`). The full set, every state in light and dark, is attached to each release as `FlowBreak-screenshots.zip`.
+
+![Menu-bar popover states](Design/Screenshots/popover-states-light.png)
+
+| Guided break | Insights |
+| --- | --- |
+| ![Guided break](Design/Screenshots/guided-break.png) | ![Insights](Design/Screenshots/insights.png) |
+
+![Settings](Design/Screenshots/settings.png)
+![Onboarding](Design/Screenshots/onboarding.png)
 
 ## Features
 
