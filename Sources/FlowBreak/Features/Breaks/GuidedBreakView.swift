@@ -182,8 +182,7 @@ struct GuidedBreakView: View {
                 .font(Typography.largeCountdown)
                 .foregroundStyle(model.state.isPaused ? Palette.secondaryText : Color.primary)
                 .accessibilityLabel("\(DurationFormatter.clock(model.remaining)) of break left")
-            ProgressView(value: model.progress)
-                .tint(Palette.success)
+            ProgressBar(progress: model.progress, tint: Palette.success)
                 .accessibilityLabel("Break progress")
             HStack(spacing: Spacing.s) {
                 Button { model.extendBreak() } label: { Label("+5 min", systemImage: "plus") }
@@ -272,10 +271,12 @@ struct ActivityCard: View {
                 Image(systemName: activity.systemImage)
                     .font(.system(size: 18))
                     .foregroundStyle(Palette.accentText)
+                    .frame(width: 24, height: 24, alignment: .leading)
                 Spacer()
                 if done {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Palette.success)
+                        .frame(height: 24)
                 }
             }
             Text(activity.title)

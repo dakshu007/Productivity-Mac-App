@@ -68,7 +68,7 @@ struct InsightsView: View {
 
     private func metrics(_ s: InsightsSummary) -> some View {
         Card {
-            Grid(alignment: .leading, horizontalSpacing: Spacing.xl, verticalSpacing: Spacing.l) {
+            Grid(alignment: .topLeading, horizontalSpacing: Spacing.xl, verticalSpacing: Spacing.l) {
                 GridRow {
                     MetricView(title: "Focus time", value: DurationFormatter.short(s.focusTime),
                                help: "Un-paused time spent in focus sessions in this period, including sessions you stopped early.")

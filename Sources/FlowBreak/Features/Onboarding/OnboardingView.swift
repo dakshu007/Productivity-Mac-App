@@ -188,6 +188,8 @@ struct OnboardingView: View {
     private var footer: some View {
         HStack {
             Button("Back") { go(-1) }
+                .buttonStyle(SecondaryButtonStyle())
+                .frame(width: 96)
                 .opacity(page == .welcome ? 0 : 1)
                 .disabled(page == .welcome)
             Spacer()
@@ -202,6 +204,8 @@ struct OnboardingView: View {
             .accessibilityLabel("Step \(page.rawValue + 1) of \(Page.allCases.count)")
             Spacer()
             Button(page == .notifications ? "Continue" : "Next") { go(1) }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(width: 110)
                 .opacity(page == .ready ? 0 : 1)
                 .disabled(page == .ready)
                 .keyboardShortcut(page == .ready ? nil : .defaultAction)

@@ -11,13 +11,37 @@ struct ProgressRing: View {
         ZStack {
             Circle()
                 .stroke(Palette.track, lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: max(0.0001, min(1, progress)))
-                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.4), value: progress)
+            if progress > 0.001 {
+                Circle()
+                    .trim(from: 0, to: min(1, progress))
+                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.4), value: progress)
+            }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Thin horizontal progress bar (custom so the brand tint renders consistently).
+struct ProgressBar: View {
+    var progress: Double
+    var tint: Color
+    var height: CGFloat = 6
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Palette.track)
+                Capsule()
+                    .fill(tint)
+                    .frame(width: max(height, geo.size.width * min(1, max(0, progress))))
+                    .opacity(progress > 0.001 ? 1 : 0)
+            }
+        }
+        .frame(height: height)
+        .accessibilityElement()
+        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
     }
 }
 

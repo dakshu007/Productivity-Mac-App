@@ -208,6 +208,9 @@ enum PreviewRenderer {
             Scenario(name: "50-notification-concept", size: NSSize(width: 420, height: 230)) { _ in
                 AnyView(NotificationConceptView())
             },
+            Scenario(name: "51-menu-bar-items", size: NSSize(width: 420, height: 150)) { _ in
+                AnyView(MenuBarItemsConceptView())
+            },
         ]
     }
 
@@ -331,5 +334,37 @@ struct NotificationConceptView: View {
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
         .frame(width: 360)
         .padding(Spacing.xxl)
+    }
+}
+
+/// How the status item reads in each state (the real item is drawn by macOS
+/// from the same template image and title).
+struct MenuBarItemsConceptView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            item(nil, "Ready")
+            item("32:35", "Focusing (countdown can be turned off)")
+            item("Break", "Break due — fallback when notifications are off")
+            item("03:20", "On break")
+        }
+        .padding(Spacing.l)
+    }
+
+    private func item(_ title: String?, _ caption: String) -> some View {
+        HStack(spacing: Spacing.l) {
+            HStack(spacing: 4) {
+                Image(nsImage: LogoRenderer.menuBarImage())
+                    .renderingMode(.template)
+                if let title {
+                    Text(title).font(.system(size: 13, weight: .medium).monospacedDigit())
+                }
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.06)))
+            .frame(width: 110, alignment: .leading)
+            Text(caption).font(.system(size: 12)).foregroundStyle(.secondary)
+        }
     }
 }

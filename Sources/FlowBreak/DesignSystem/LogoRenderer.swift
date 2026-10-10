@@ -106,6 +106,8 @@ struct BrandMark: View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                 .fill(Palette.ink)
+            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                .strokeBorder(Color(nsColor: .dynamic(light: .clear, dark: NSColor(white: 1, alpha: 0.14))), lineWidth: max(0.5, size / 64))
             Image(nsImage: LogoRenderer.image(size: size * 0.8, color: Palette.accentNS, midrib: size >= 28))
                 .resizable()
                 .frame(width: size * 0.8, height: size * 0.8)

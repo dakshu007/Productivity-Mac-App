@@ -5,26 +5,61 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
 
+    private static let tabs: [(tab: SettingsTab, title: String, icon: String)] = [
+        (.focus, "Focus", "timer"),
+        (.reminders, "Reminders", "bell"),
+        (.privacy, "Privacy", "hand.raised"),
+        (.general, "General", "gearshape"),
+        (.about, "About", "info.circle"),
+    ]
+
     var body: some View {
-        TabView(selection: $model.settingsTab) {
-            FocusSettingsView()
-                .tabItem { Label("Focus", systemImage: "timer") }
-                .tag(SettingsTab.focus)
-            ReminderSettingsView()
-                .tabItem { Label("Reminders", systemImage: "bell") }
-                .tag(SettingsTab.reminders)
-            PrivacySettingsView()
-                .tabItem { Label("Privacy", systemImage: "hand.raised") }
-                .tag(SettingsTab.privacy)
-            GeneralSettingsView()
-                .tabItem { Label("General", systemImage: "gearshape") }
-                .tag(SettingsTab.general)
-            AboutView()
-                .tabItem { Label("About", systemImage: "info.circle") }
-                .tag(SettingsTab.about)
+        VStack(spacing: 0) {
+            HStack(spacing: Spacing.xs) {
+                ForEach(Self.tabs.indices, id: \.self) { index in
+                    tabButton(Self.tabs[index])
+                }
+            }
+            .padding(.vertical, Spacing.s)
+            .frame(maxWidth: .infinity)
+            Divider()
+            Group {
+                switch model.settingsTab {
+                case .focus: FocusSettingsView()
+                case .reminders: ReminderSettingsView()
+                case .privacy: PrivacySettingsView()
+                case .general: GeneralSettingsView()
+                case .about: AboutView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(Spacing.l)
         .frame(minWidth: 520, minHeight: 460)
+    }
+
+    private func tabButton(_ item: (tab: SettingsTab, title: String, icon: String)) -> some View {
+        let selected = model.settingsTab == item.tab
+        return Button {
+            model.settingsTab = item.tab
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 17))
+                    .frame(height: 20)
+                Text(item.title)
+                    .font(.system(size: 11, weight: selected ? .semibold : .regular))
+            }
+            .foregroundStyle(selected ? Palette.accentText : Palette.secondaryText)
+            .frame(width: 78, height: 46)
+            .background(
+                RoundedRectangle(cornerRadius: Radius.medium, style: .continuous)
+                    .fill(selected ? Palette.track : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.title)
+        .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
 }
 
