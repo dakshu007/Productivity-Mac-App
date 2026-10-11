@@ -142,12 +142,14 @@ struct NudgeView: View {
             HStack(spacing: 6) {
                 Button("Back to focus", action: onBack)
                     .help("Hide \(appName) and return to what you were doing")
-                Button("Save a thought", action: onSave)
+                Button("Save thought", action: onSave)
                     .help("Capture it in your Inbox for later")
-                Button("Allow this session", action: onAllow)
+                Button("Allow", action: onAllow)
+                    .help("Don't nudge about \(appName) again this session")
                 Button("Break", action: onBreak)
             }
             .buttonStyle(SmallPillButtonStyle())
+            .fixedSize()
         }
         .padding(Spacing.m + 2)
         .frame(width: 380)

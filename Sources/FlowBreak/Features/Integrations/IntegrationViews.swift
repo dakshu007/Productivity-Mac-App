@@ -93,7 +93,13 @@ struct MeetingStrip: View {
             VStack(alignment: .leading, spacing: 2) {
                 label(icon: "calendar", text: "Next: \(next.title) at \(next.interval.start.formatted(time)) (in \(QuickAddParser.formatMinutes(minutesAway)))", tint: Palette.secondaryText)
                 if conflict {
-                    label(icon: "exclamationmark.circle", text: "A \(focusMinutes)-min session would run into it — try \(max(5, minutesAway - 5)) min.", tint: Palette.warning)
+                    let shorter = max(5, minutesAway - 5)
+                    HStack(spacing: 6) {
+                        label(icon: "exclamationmark.circle", text: "A \(focusMinutes)-min session would run into it.", tint: Palette.warning)
+                        Button("Start \(shorter) min") { model.startFocus(minutes: shorter) }
+                            .buttonStyle(SmallPillButtonStyle())
+                            .fixedSize()
+                    }
                 }
             }
         }

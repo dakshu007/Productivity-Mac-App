@@ -41,6 +41,14 @@ Rendered from the real app by CI (`FlowBreak --render-previews`). The full set, 
 
 ## Features
 
+### New in 1.2
+
+- **Shortcuts, Siri & Spotlight.** Start, pause and stop focus; take a break; add a task (with smart parsing); complete a task; get today's Big Three; get the focus status. Try "Start focus in FlowBreak" or "What's my Big Three in FlowBreak".
+- **Calendar awareness** (opt-in). Break reminders that would fire during a meeting are held and delivered when it ends. Today shows free time between meetings. The menu bar shows your next meeting and warns when a session would run into it, with a one-click shorter session. You can also schedule any task as a "Focus: …" block on your calendar.
+- **Distraction nudges** (opt-in). If you switch to an app you marked as distracting during a running focus session, a small note asks "Still on *task*?". It offers *Back to focus* (hides that app), *Save thought* (Quick Add), *Allow* (for this session) or *Break*. FlowBreak never blocks anything.
+- **Update checks** (opt-in). FlowBreak can check a small `latest.json` file on GitHub, download the new DMG, verify its checksum and open it. See [docs/SIGNING.md](docs/SIGNING.md) for signing and notarization.
+- **Copy Diagnostics / Report a Problem** in Settings › About. Diagnostics contain settings and record counts, never task titles, notes or app names.
+
 ### Tasks (new in 1.1)
 
 - **Quick Add from anywhere.** A floating panel accepts text like `Review MyKavo SEO tomorrow #marketing !high 30m +Website` and shows a preview of the due date, tags, priority, estimate and project before saving. Return saves, Escape cancels, and the app you were using stays in front. Smart parsing can be switched off. You can choose an optional global shortcut (⌥⌘T, ⌃⌥T or ⌃⌥Space); none is set by default.

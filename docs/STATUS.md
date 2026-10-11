@@ -112,3 +112,15 @@ Status legend:
 - Due dates are stored as the local start of day. If you change time zones, a task due "today" can shift by a day.
 - The Quick Add parser understands English date words only.
 - Global shortcuts come from a fixed set of combinations; there's no shortcut recorder yet.
+
+---
+
+# 1.2 — integrations
+
+| Item | Status |
+| --- | --- |
+| #1 Real-Mac testing | Your part. Added **Copy Diagnostics** and **Report a Problem** (pre-filled GitHub issue) so problems are easy to report. |
+| #2 Signing & updates | Signing/notarization pipeline ready; step-by-step guide in `docs/SIGNING.md` (needs your Apple Developer account). Opt-in update checks via CI-published `latest.json`, with checksum-verified download — verified (tests + CI publishes the manifest). Fully automatic in-place updates (Sparkle) are deliberately deferred until builds are Developer ID–signed. |
+| #3 Shortcuts / Siri / Spotlight | 9 App Intents + phrases. CI checks that the metadata is embedded in the app bundle. **Actually running them from the Shortcuts app is unverified (interactive).** |
+| #4 Calendar awareness | Hold reminders during meetings, free time, conflict warnings, schedule focus blocks. Planning logic is verified (tests), the views are verified (render), and EventKit access is unverified (interactive, needs permission). |
+| #5 Distraction nudges | Policy verified (tests), nudge view verified (render). App-switch detection on a real Mac is unverified (interactive). |

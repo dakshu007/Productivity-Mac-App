@@ -13,7 +13,9 @@ FlowBreak is local-first. This document describes what the current version actua
 | Weekly reflections | `~/Library/Application Support/FlowBreak/reflections.json` | When you write one |
 | Foreground app usage (app name, bundle ID, start/end time) | `~/Library/Application Support/FlowBreak/usage.json` | **Only after you turn on app usage tracking** |
 
-Nothing is uploaded. FlowBreak has no account, server, cloud sync, advertising, fingerprinting, or analytics SDK. It makes no network requests.
+Nothing is uploaded. FlowBreak has no account, server, cloud sync, advertising, fingerprinting, or analytics SDK.
+
+**Network:** FlowBreak contacts the internet only for update checks, and only if you turn them on or press **Check Now**. A check downloads a small public file (`latest.json`) from this project's GitHub releases; no identifiers or personal data are sent. GitHub, like any web server, sees the request's IP address. "Report a Problem" opens your browser, and nothing is sent until you submit the issue yourself.
 
 ## App usage tracking
 
@@ -31,6 +33,18 @@ Nothing is uploaded. FlowBreak has no account, server, cloud sync, advertising, 
 - **Private** tasks show as "Private task" in Insights and weekly summaries (Settings › Tasks).
 - Global shortcuts are **off by default**. They use Carbon's `RegisterEventHotKey`, which only notifies FlowBreak when its own key combination is pressed. FlowBreak never sees other keystrokes and needs no Accessibility permission.
 - Backups are files you save yourself. Restoring keeps a safety copy in `~/Library/Application Support/FlowBreak/Backups`.
+
+## Calendar (opt-in)
+
+- Off until you turn on calendar awareness, which asks macOS for calendar access.
+- FlowBreak reads only the start time, end time and title of today's and tomorrow's events, in memory, to hold reminders during meetings, show free time and warn about conflicts. Nothing from your calendar is written to FlowBreak's files or sent anywhere.
+- Scheduling a focus block adds one event, "Focus: <task>", to the calendar you choose.
+
+## Distraction nudges (opt-in)
+
+- Off by default. When on, FlowBreak watches only which app comes to the front (the same public notification used by app usage tracking), and only during a running focus session.
+- Only the number of nudges per session is stored. App names are not stored for nudges.
+- "Back to focus" hides that app only when you click it. FlowBreak never blocks or quits apps.
 
 ## Website tracking
 
