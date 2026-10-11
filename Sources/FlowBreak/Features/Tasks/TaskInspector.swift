@@ -79,6 +79,15 @@ struct TaskInspector: View {
                     Label("Complete", systemImage: "checkmark")
                 }
                 .buttonStyle(SecondaryButtonStyle())
+                Button {
+                    model.scheduleBlockTask = task
+                } label: {
+                    Image(systemName: "calendar.badge.plus")
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .frame(width: 40)
+                .help("Schedule a focus block on your calendar")
+                .accessibilityLabel("Schedule focus block")
             } else if task.status == .completed {
                 Button { model.reopen(task.id) } label: { Label("Reopen", systemImage: "arrow.uturn.backward") }
                     .buttonStyle(SecondaryButtonStyle())

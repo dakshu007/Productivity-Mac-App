@@ -50,6 +50,19 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/FlowBreak"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+
+# App Intents metadata (Shortcuts/Siri). Xcode's build system extracts it during
+# universal builds; macOS reads it from Contents/Resources/Metadata.appintents.
+INTENTS_METADATA=""
+while IFS= read -r -d '' candidate; do
+  INTENTS_METADATA="$candidate"
+done < <(find "$ROOT/.build" -type d -name Metadata.appintents -print0 2>/dev/null)
+if [[ -n "$INTENTS_METADATA" && -d "$INTENTS_METADATA" ]]; then
+  ditto "$INTENTS_METADATA" "$APP/Contents/Resources/Metadata.appintents"
+  echo "==> Embedded App Intents metadata from $INTENTS_METADATA"
+else
+  echo "note: no App Intents metadata found (Shortcuts actions need a --universal build)."
+fi
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" "$ROOT/Resources/Info.plist" > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null

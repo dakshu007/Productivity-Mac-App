@@ -28,6 +28,12 @@
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>FlowBreak reads your meeting times to hold break reminders during meetings and show free time — only if you turn on calendar awareness. Nothing is stored or sent.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>FlowBreak reads your meeting times to hold break reminders during meetings, show free time and add focus blocks you schedule. Nothing from your calendar is stored or sent.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>FlowBreak adds focus blocks you schedule to your calendar.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

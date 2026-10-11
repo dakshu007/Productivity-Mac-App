@@ -9,6 +9,7 @@ struct SettingsView: View {
         (.focus, "Focus", "timer"),
         (.reminders, "Reminders", "bell"),
         (.tasks, "Tasks", "checklist"),
+        (.calendar, "Calendar", "calendar"),
         (.privacy, "Privacy", "hand.raised"),
         (.general, "General", "gearshape"),
         (.about, "About", "info.circle"),
@@ -29,6 +30,7 @@ struct SettingsView: View {
                 case .focus: FocusSettingsView()
                 case .reminders: ReminderSettingsView()
                 case .tasks: TaskSettingsView()
+                case .calendar: CalendarSettingsView()
                 case .privacy: PrivacySettingsView()
                 case .general: GeneralSettingsView()
                 case .about: AboutView()
@@ -52,7 +54,7 @@ struct SettingsView: View {
                     .font(.system(size: 11, weight: selected ? .semibold : .regular))
             }
             .foregroundStyle(selected ? Palette.accentText : Palette.secondaryText)
-            .frame(width: 78, height: 46)
+            .frame(width: 72, height: 46)
             .background(
                 RoundedRectangle(cornerRadius: Radius.medium, style: .continuous)
                     .fill(selected ? Palette.track : Color.clear)
@@ -151,6 +153,8 @@ struct FocusSettingsView: View {
                 Text("Automatic cycles are off by default: FlowBreak offers the next step instead of starting it. Cycles never continue automatically while your Mac is asleep. Changes apply to the next session.")
                     .settingsFootnote()
             }
+
+            NudgeSettingsSection()
         }
         .formStyle(.grouped)
     }
@@ -420,19 +424,24 @@ struct AboutView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Spacing.m) {
-                BrandMark(size: 64)
-                    .padding(.top, Spacing.l)
-                Text("FlowBreak").font(.system(size: 20, weight: .semibold))
-                Text("Version \(model.versionString)").font(.callout).foregroundStyle(.secondary)
-                Text("Focus, pause, return.").font(.callout)
-                PrivacySummary()
-                    .padding(.top, Spacing.m)
+        Form {
+            Section {
+                VStack(spacing: Spacing.s) {
+                    BrandMark(size: 64)
+                    Text("FlowBreak").font(.system(size: 20, weight: .semibold))
+                    Text("Version \(model.versionString)").font(.callout).foregroundStyle(.secondary)
+                    Text("Focus, pause, return.").font(.callout)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.s)
             }
-            .frame(maxWidth: .infinity)
-            .padding(Spacing.l)
+            UpdatesSection()
+            SupportSection()
+            Section {
+                PrivacySummary()
+            }
         }
+        .formStyle(.grouped)
     }
 }
 

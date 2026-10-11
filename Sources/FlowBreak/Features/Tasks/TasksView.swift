@@ -72,6 +72,12 @@ struct TasksView: View {
         .sheet(item: $model.proofRequest) { task in
             ProofOfDoneView(task: task).environmentObject(model)
         }
+        .sheet(item: $model.scheduleBlockTask) { task in
+            ScheduleBlockView(task: task, suggestedStart: Self.suggestedStart(model)) {
+                model.scheduleBlockTask = nil
+            }
+            .environmentObject(model)
+        }
         .confirmationDialog(
             confirmDelete.count == 1 ? "Delete this task permanently?" : "Delete \(confirmDelete.count) tasks permanently?",
             isPresented: Binding(get: { !confirmDelete.isEmpty }, set: { if !$0 { confirmDelete = [] } })
@@ -88,6 +94,20 @@ struct TasksView: View {
             Text("Subtasks are deleted too. Focus history is kept. You can undo right after, but archiving is the safer choice.")
         }
         .background(shortcuts)
+    }
+
+    /// Next quarter hour that doesn't overlap a meeting (within the next 8 hours).
+    static func suggestedStart(_ model: AppModel) -> Date {
+        let calendar = model.calendar
+        var start = Date()
+        let minute = calendar.component(.minute, from: start)
+        start = calendar.date(byAdding: .minute, value: 15 - minute % 15, to: start) ?? start
+        start = calendar.date(bySetting: .second, value: 0, of: start) ?? start
+        for _ in 0..<32 {
+            if CalendarPlanning.firstConflict(model.busyBlocks, start: start, duration: 45 * 60) == nil { return start }
+            start = start.addingTimeInterval(15 * 60)
+        }
+        return start
     }
 
     private var isReadOnlyList: Bool {
@@ -121,12 +141,12 @@ struct TasksView: View {
         if w.planned > 0 || w.unestimated > 0 {
             HStack(spacing: Spacing.s) {
                 Image(systemName: "hourglass").font(.system(size: 10.5))
-                Text("About \(QuickAddParser.formatMinutes(max(w.planned, 1))) estimated\(w.unestimated > 0 ? " (+\(w.unestimated) without estimate)" : "") · \(QuickAddParser.formatMinutes(max(w.minutesLeft, 0))) left in your workday")
+                Text("About \(QuickAddParser.formatMinutes(max(w.planned, 1))) estimated\(w.unestimated > 0 ? " (+\(w.unestimated) without estimate)" : "") · " + (model.freeMinutesToday.map { "\(QuickAddParser.formatMinutes(max($0, 0))) free between meetings" } ?? "\(QuickAddParser.formatMinutes(max(w.minutesLeft, 0))) left in your workday"))
                     .lineLimit(1)
             }
             .font(.system(size: 11.5))
             .foregroundStyle(Palette.secondaryText)
-            if w.planned > w.minutesLeft && w.minutesLeft > 0 {
+            if w.planned > (model.freeMinutesToday ?? w.minutesLeft) && w.minutesLeft > 0 {
                 Text("That's more than the time left today — it's fine to move something to tomorrow.")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Palette.warning)
@@ -359,6 +379,7 @@ struct TaskContextMenu: View {
     var body: some View {
         if task.isOpen {
             Button("Start Focus…") { model.presentStartFocus(task) }
+            Button("Schedule Focus Block…") { model.scheduleBlockTask = task }
             Button("Complete") { model.requestComplete(task.id) }
             Divider()
             let big = task.isBigThree(on: model.now, calendar: model.calendar)

@@ -38,6 +38,19 @@ jobs:
       - name: Build universal app
         run: Scripts/build_universal.sh
 
+      - name: Check Shortcuts (App Intents) metadata
+        run: |
+          META=build/FlowBreak.app/Contents/Resources/Metadata.appintents
+          if [[ -d "$META" ]]; then
+            ls -la "$META"
+            for intent in StartFocusIntent AddTaskIntent BigThreeIntent CompleteTaskIntent; do
+              grep -rqa "$intent" "$META" && echo "found $intent" || { echo "::error::$intent missing from App Intents metadata"; exit 1; }
+            done
+          else
+            echo "::warning::App Intents metadata was not produced; Shortcuts actions won't appear."
+            find .build -name "*.appintents" -maxdepth 6 || true
+          fi
+
       - name: Render UI screenshots (every state, light & dark)
         continue-on-error: true
         run: |
@@ -139,6 +152,21 @@ jobs:
           mkdir -p build/release-extras
           cp "$DMG_PATH" "$STABLE"
           EXTRAS+=("$STABLE")
+          # Update manifest read by FlowBreak's "Check for Updates".
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
+          STABLE_NAME="$(basename "$STABLE")"
+          python3 - "$VERSION" "${{ github.run_number }}" "$REPO_URL/releases/download/latest-build/$STABLE_NAME" "$(cut -d' ' -f1 "$DMG_PATH.sha256")" "$REPO_URL/releases/tag/latest-build" "$([[ "$DMG_NAME" == *-unsigned.dmg ]] && echo false || echo true)" > build/release-extras/latest.json <<'PY'
+          import json, sys, datetime
+          version, build, url, sha, notes, notarized = sys.argv[1:7]
+          print(json.dumps({
+              "version": version, "build": int(build), "dmgURL": url, "sha256": sha,
+              "releaseNotesURL": notes, "minimumSystemVersion": "13.0",
+              "publishedAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "notarized": notarized == "true",
+          }, indent=2))
+          PY
+          cat build/release-extras/latest.json
+          EXTRAS+=(build/release-extras/latest.json)
           gh release create latest-build "$DMG_PATH" "$DMG_PATH.sha256" "${EXTRAS[@]}" \
             --target "$GITHUB_SHA" \
             --title "FlowBreak $VERSION — latest build" \

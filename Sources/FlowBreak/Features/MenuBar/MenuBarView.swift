@@ -17,6 +17,7 @@ struct MenuBarView: View {
                     CheckInCard(session: session, task: task)
                 }
                 timerDisplay
+                MeetingStrip()
                 PopoverTaskStrip()
                 primaryAction
                 secondaryActions
@@ -74,6 +75,7 @@ struct MenuBarView: View {
     // MARK: Banners
 
     @ViewBuilder private var banners: some View {
+        UpdateBanner()
         if let error = model.errorMessage {
             Banner(tone: .error, message: error, actionTitle: "Dismiss") { model.dismissError() }
         }

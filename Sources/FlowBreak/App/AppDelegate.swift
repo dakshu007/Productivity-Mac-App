@@ -73,6 +73,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windows?.show(.insights)
     }
 
+    @objc func checkForUpdates(_ sender: Any?) {
+        model?.checkForUpdates(userInitiated: true)
+        model?.settingsTab = .about
+        windows?.show(.settings)
+    }
+
     @objc func showAbout(_ sender: Any?) {
         model?.settingsTab = .about
         windows?.show(.settings)
@@ -88,6 +94,7 @@ enum MainMenu {
         let appItem = NSMenuItem()
         let appMenu = NSMenu(title: "FlowBreak")
         appMenu.addItem(withTitle: "About FlowBreak", action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         appMenu.addItem(withTitle: "Tasks", action: #selector(AppDelegate.showTasks(_:)), keyEquivalent: "t")

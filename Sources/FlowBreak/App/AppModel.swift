@@ -14,7 +14,7 @@ enum AppWindow: String {
 }
 
 enum SettingsTab: String, Hashable {
-    case focus, reminders, tasks, privacy, general, about
+    case focus, reminders, tasks, calendar, privacy, general, about
 }
 
 /// The app's single source of observable state. Views call intent methods here;
@@ -51,6 +51,8 @@ final class AppModel: ObservableObject {
     @Published var focusSheetTask: TaskItem? = nil
     /// Set to ask the Tasks window to focus its search field (⌘F).
     @Published var focusSearch = false
+    /// Task whose "Schedule focus block" sheet is showing.
+    @Published var scheduleBlockTask: TaskItem? = nil
     @Published var pendingRestore: PendingRestore? = nil
     @Published var shortcutErrors: [String] = []
     @Published var nextTaskID: UUID? = nil {
@@ -59,6 +61,16 @@ final class AppModel: ObservableObject {
     static let nextTaskKey = "FlowBreak.nextTaskID"
     let taskRepo: TaskRepository
     let hotKeys = HotKeyService()
+
+    // Integrations (1.2)
+    @Published var updateState: UpdateState = .idle
+    @Published var busyBlocks: [BusyBlock] = []
+    @Published var calendarAccess: CalendarAccess = .notDetermined
+    @Published var calendarList: [CalendarInfo] = []
+    let updates = UpdateService()
+    let calendarService = CalendarService()
+    var nudgeController: NudgeController?
+    var integrationTimers: [Timer] = []
     var taskSaveWork: DispatchWorkItem?
     var toastDismissWork: DispatchWorkItem?
 
@@ -152,6 +164,7 @@ final class AppModel: ObservableObject {
         configureTracking()
         configureShortcuts()
         ensureRecurringTasks()
+        configureIntegrations()
         syncNotifications()
     }
 
@@ -284,6 +297,7 @@ final class AppModel: ObservableObject {
             || old.openTodayShortcut != settings.openTodayShortcut {
             configureShortcuts()
         }
+        integrationSettingsChanged(from: old)
         if old.notificationsEnabled != settings.notificationsEnabled && settings.notificationsEnabled && notificationStatus == .notDetermined {
             notifications.requestAuthorization()
         }
@@ -493,7 +507,8 @@ final class AppModel: ObservableObject {
             settings: settings.reminderSettings,
             defaultBreakDuration: configuration.shortBreakDuration,
             now: Date(),
-            calendar: calendar
+            calendar: calendar,
+            busy: reminderBusyIntervals
         )
         notifications.sync(plan: plan, state: engine.state, soundEnabled: settings.soundEnabled)
     }

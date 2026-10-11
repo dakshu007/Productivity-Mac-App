@@ -344,6 +344,11 @@ struct StartFocusView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            if model.state.phase != .focusing, let conflict = model.meetingConflict(minutes: minutes) {
+                Label("“\(conflict.title)” starts at \(conflict.interval.start.formatted(date: .omitted, time: .shortened)) — this session would run into it.", systemImage: "exclamationmark.circle")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Palette.warning)
+            }
             TextField("Intention for this session (optional)", text: $intent)
                 .textFieldStyle(.roundedBorder)
             HStack {

@@ -22,6 +22,8 @@ struct TaskSettingsView: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
 
+            ShortcutsInfoSection()
+
             Section {
                 Toggle("Ask “how did it go?” after a task's focus session", isOn: binding(\.askForOutcome))
                 Toggle("Move a task to In Progress when focus starts", isOn: binding(\.moveToInProgressOnFocus))
