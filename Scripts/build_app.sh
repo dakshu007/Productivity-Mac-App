@@ -51,17 +51,44 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/FlowBreak"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
-# App Intents metadata (Shortcuts/Siri). Xcode's build system extracts it during
-# universal builds; macOS reads it from Contents/Resources/Metadata.appintents.
-INTENTS_METADATA=""
-while IFS= read -r -d '' candidate; do
-  INTENTS_METADATA="$candidate"
-done < <(find "$ROOT/.build" -type d -name Metadata.appintents -print0 2>/dev/null)
-if [[ -n "$INTENTS_METADATA" && -d "$INTENTS_METADATA" ]]; then
-  ditto "$INTENTS_METADATA" "$APP/Contents/Resources/Metadata.appintents"
-  echo "==> Embedded App Intents metadata from $INTENTS_METADATA"
+# App Intents metadata (Shortcuts/Siri/Spotlight). SwiftPM doesn't run Apple's
+# extractor after compiling an executable, so we run it here on the compiler's
+# constant-value output. macOS reads Contents/Resources/Metadata.appintents.
+CONST_VALUES="$(find "$ROOT/.build" -path "*/Release/FlowBreak.build/Objects-normal/arm64/FlowBreak-master.swiftconstvalues" 2>/dev/null | head -n1 || true)"
+[[ -n "$CONST_VALUES" ]] || CONST_VALUES="$(find "$ROOT/.build" -path "*FlowBreak.build/Objects-normal/*/FlowBreak-master.swiftconstvalues" 2>/dev/null | head -n1 || true)"
+if [[ -n "$CONST_VALUES" ]] && xcrun --find appintentsmetadataprocessor >/dev/null 2>&1; then
+  WORK="$(mktemp -d)"
+  find "$ROOT/Sources/FlowBreak" -name "*.swift" | sort > "$WORK/sources.list"
+  echo "$CONST_VALUES" > "$WORK/constvalues.list"
+  PROCESSOR="$(xcrun --find appintentsmetadataprocessor)"
+  TOOLCHAIN_DIR="$(cd "$(dirname "$PROCESSOR")/../.." && pwd)"
+  SDK_ROOT="$(xcrun --sdk macosx --show-sdk-path)"
+  XCODE_BUILD="$(xcodebuild -version | awk '/Build version/ {print $3}')"
+  ARCH="$(basename "$(dirname "$CONST_VALUES")")"
+  if "$PROCESSOR" \
+      --toolchain-dir "$TOOLCHAIN_DIR" \
+      --module-name FlowBreak \
+      --sdk-root "$SDK_ROOT" \
+      --xcode-version "$XCODE_BUILD" \
+      --platform-family macOS \
+      --deployment-target 13.0 \
+      --target-triple "$ARCH-apple-macos13.0" \
+      --source-file-list "$WORK/sources.list" \
+      --swift-const-vals-list "$WORK/constvalues.list" \
+      --output "$APP/Contents/Resources" \
+      --no-app-shortcuts-localization \
+      --force; then
+    if [[ -d "$APP/Contents/Resources/Metadata.appintents" ]]; then
+      echo "==> Embedded App Intents metadata (Shortcuts actions)"
+    else
+      echo "warning: the App Intents extractor ran but produced no metadata." >&2
+    fi
+  else
+    echo "warning: App Intents metadata extraction failed; Shortcuts actions won't be available." >&2
+  fi
+  rm -rf "$WORK"
 else
-  echo "note: no App Intents metadata found (Shortcuts actions need a --universal build)."
+  echo "note: App Intents metadata not generated (needs a release build made with Xcode's build system, e.g. --universal)."
 fi
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" "$ROOT/Resources/Info.plist" > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
