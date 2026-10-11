@@ -51,3 +51,64 @@ This file is updated alongside the code. It says plainly what is done and what h
 - [ ] App tracking off by default; enable, exclude an app, private mode.
 - [ ] Launch at login toggle (may require approval in Login Items).
 - [ ] Light/Dark appearance, Reduce Motion, VoiceOver labels, keyboard Return/⌘,/⌘Q.
+
+---
+
+# Task system release (1.1) — status against docs/ROADMAP.md
+
+Status legend:
+- **Verified (tests):** covered by XCTest on CI.
+- **Verified (render):** shown in a CI-rendered screenshot of the real view.
+- **Unverified (interactive):** the code is built, but it needs a person on a real Mac (keyboard, panels, haptics, global shortcuts).
+- **Missing:** not built yet.
+
+## P0 — Essential next release
+
+| Item | Status |
+| --- | --- |
+| Audit the repository first | Done. The existing timer engine was kept unchanged apart from additive task fields; all earlier tests still pass. |
+| Local task model and persistence (`tasks.json`, atomic, versioned, tolerant decoding) | Verified (tests) |
+| Quick Add task entry with parse preview | Verified (tests) for the parser, Verified (render) for the panel. Global shortcut and return-to-previous-app are unverified (interactive). |
+| Inbox and Today lists | Verified (tests + render) |
+| Complete, reopen, archive, undo | Verified (tests). The undo toast is Verified (render). |
+| Flow Finish animation and toast | Verified (render) for static states. The animation and haptic are unverified (interactive). |
+| Optional Definition of Done / Proof of Done | Verified (render) |
+| Start a focus session from a task | Verified (tests + render) |
+| Persist task–session relationships | Verified (tests), including relaunch, pause/resume, reassign and old-file decoding |
+| Tests for task persistence and completion | Verified (tests): 40+ new test cases |
+| All data local | Yes. There is no networking code in the app. |
+| Existing timer behaviour intact | Verified (tests): all original timer tests pass unchanged |
+
+## P1 — Strong daily workflow
+
+| Item | Status |
+| --- | --- |
+| Daily Big Three | Verified (tests + render) |
+| Task estimates and focus-time totals | Verified (tests + render) |
+| Progress notes | Verified (tests + render) |
+| End-of-session outcome check-in (never auto-completes) | Verified (tests + render) |
+| Inbox / Today / Next / In Progress / Someday / Completed / Archived / Projects views | Verified (render) |
+| Search (title, notes, Done-when, project, `#tag`) | Verified (tests) |
+| Configurable, conflict-aware global shortcuts (off by default) | Unverified (interactive). If registration fails, the error is shown in Settings › Tasks. |
+| JSON/CSV export and backup, restore with preview | Verified (tests) for validation, export and cycle repair. The file dialogs are unverified (interactive). |
+| Weekly review with reflection and Markdown export | Verified (tests + render) |
+
+## P2 and beyond
+
+| Item | Status |
+| --- | --- |
+| Task and project insights | Verified (tests + render) |
+| Recurring tasks (no duplicates after relaunch) | Verified (tests) |
+| Subtasks with cycle prevention | Verified (tests) |
+| Checklist import (text/Markdown) and task Markdown export | Verified (tests) |
+| Copy task as Markdown, open task link | Unverified (interactive) |
+| Private tasks hidden in insights and summaries | Verified (tests) |
+| Distraction nudges, ambient sound, Calendar/Reminders/Shortcuts integrations, browser extension | Missing (by design for this release) |
+| Task templates, dependencies, calendar planning view | Missing |
+| AI features, sync | Missing (not planned without an explicit need and consent design) |
+
+## Known limitations
+
+- Due dates are stored as the local start of day. If you change time zones, a task due "today" can shift by a day.
+- The Quick Add parser understands English date words only.
+- Global shortcuts come from a fixed set of combinations; there's no shortcut recorder yet.

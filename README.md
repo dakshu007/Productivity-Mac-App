@@ -1,12 +1,12 @@
 # FlowBreak
 
-A calm, native macOS menu-bar app that helps you focus in sessions, take real breaks, and come back to work. Local-first, with no account, no cloud, and no analytics.
+A calm, native macOS menu-bar app that helps you decide what matters, focus on it, take real breaks, and finish work with a clear sense of progress. Local-first, with no account, no cloud, and no analytics.
 
 ![FlowBreak icon and symbol on light and dark backgrounds](Design/BrandPreview.png)
 
 ## Download
 
-**[⬇︎ FlowBreak-1.0.0-unsigned.dmg](https://github.com/dakshu007/Productivity-Mac-App/releases/download/latest-build/FlowBreak-1.0.0-unsigned.dmg)** (from the [latest build release](https://github.com/dakshu007/Productivity-Mac-App/releases/tag/latest-build), rebuilt automatically on every push to the default branch). Open it and drag **FlowBreak** to **Applications**.
+**[⬇︎ FlowBreak-unsigned.dmg](https://github.com/dakshu007/Productivity-Mac-App/releases/download/latest-build/FlowBreak-unsigned.dmg)** (from the [latest build release](https://github.com/dakshu007/Productivity-Mac-App/releases/tag/latest-build), rebuilt automatically on every push to the default branch). Open it and drag **FlowBreak** to **Applications**.
 
 Every push also builds a DMG artifact. Open the newest run under **Actions → Build FlowBreak DMG** and download it from *Artifacts*. GitHub delivers artifacts as a `.zip` that contains the `.dmg`.
 
@@ -28,6 +28,10 @@ Rendered from the real app by CI (`FlowBreak --render-previews`). The full set, 
 
 ![Menu-bar popover states](Design/Screenshots/popover-states-light.png)
 
+![Tasks window](Design/Screenshots/tasks.png)
+![Tasks in the popover: next up, working on, check-in](Design/Screenshots/popover-tasks.png)
+![Quick Add, Start focus, Proof of Done](Design/Screenshots/task-dialogs.png)
+
 | Guided break | Insights |
 | --- | --- |
 | ![Guided break](Design/Screenshots/guided-break.png) | ![Insights](Design/Screenshots/insights.png) |
@@ -36,6 +40,28 @@ Rendered from the real app by CI (`FlowBreak --render-previews`). The full set, 
 ![Onboarding](Design/Screenshots/onboarding.png)
 
 ## Features
+
+### Tasks (new in 1.1)
+
+- **Quick Add from anywhere.** A floating panel accepts text like `Review MyKavo SEO tomorrow #marketing !high 30m +Website` and shows a preview of the due date, tags, priority, estimate and project before saving. Return saves, Escape cancels, and the app you were using stays in front. Smart parsing can be switched off. You can choose an optional global shortcut (⌥⌘T, ⌃⌥T or ⌃⌥Space); none is set by default.
+- **Tasks window** with lists for Today, Inbox, Next, In Progress, Someday, Completed and Archived, plus a section per project. It also has search across titles, notes, Done-when, projects and `#tags`; drag-to-reorder; context menus; bulk complete, move and archive; and an inspector for priority, due date, estimate, repeat, project, tags, notes, link, subtasks, progress notes and focus history.
+- **Daily Big Three.** Star up to three tasks for today. They appear at the top of Today and in the menu bar.
+- **Focus on a task.** Choose a duration and an optional intention. The menu bar shows the task you're working on, and you can change the linked task mid-session.
+- **"How did it go?"** After a session linked to a task, the menu bar asks for an outcome: *Completed*, *Progress made* (with an optional note), *Later*, or *Wrong task?* to relink the session. A timer ending never marks a task complete.
+- **Flow Finish.** The checkbox fills amber and draws a checkmark (no animation with Reduce Motion), with an optional haptic. A toast reads "Done. You moved this forward." It compares your estimate with recorded focus time, or says "Focus time not tracked", and offers Undo, *Take a reset* and *Next task*.
+- **Proof of Done.** Before starting, write what "done" means ("Email sent"). When completing, confirm it and add a result note if you like. FlowBreak records what you confirm; it doesn't check outcomes itself.
+- **Recurring tasks** (daily, weekdays, weekly, monthly). The next instance is created once, even across relaunches.
+- **Task insights:**
+  - tasks completed
+  - tasks worked on but still open
+  - sessions per finished task
+  - focus by task, with estimate vs. recorded time
+  - focus by project
+  - completions per day
+- **Weekly review** with two optional reflection questions and a Markdown summary export.
+- **Backup & restore.** One versioned JSON file. Restore validates the file, shows what it contains, and saves a safety copy first. You can also import a Markdown/text checklist and export tasks as Markdown or CSV.
+
+### Focus & breaks
 
 - **Menu-bar popover** with states for idle, focusing, paused, break due, on break, and break complete. Each state has one clear primary action. The menu-bar countdown is optional.
 - **Reliable timer.** Sessions store absolute deadlines and are reconciled on every tick, on wake, on activation, and on relaunch. A session that ended while the Mac slept completes at its real deadline, exactly once. Pause captures the exact time left. If the clock is moved backwards, the session's remaining time is preserved.

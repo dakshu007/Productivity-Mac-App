@@ -273,7 +273,7 @@ struct MenuBarView: View {
     private var todaySummary: some View {
         let today = model.todaySummary
         return HStack(spacing: Spacing.m) {
-            MetricView(title: "Focus today", value: DurationFormatter.short(today.focusTime), help: "Un-paused time in focus sessions since midnight.", compact: true)
+            MetricView(title: "Focus", value: DurationFormatter.short(today.focusTime), help: "Un-paused time in focus sessions since midnight.", compact: true)
             MetricView(title: "Sessions", value: "\(today.completed)", help: "Focus sessions that ran to completion today.", compact: true)
             MetricView(title: "Breaks", value: "\(today.breaks)", help: "Breaks you started today.", compact: true)
             MetricView(title: "Tasks done", value: "\(today.tasksDone)", help: "Tasks you completed today.", compact: true)

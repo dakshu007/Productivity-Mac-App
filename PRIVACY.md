@@ -9,6 +9,8 @@ FlowBreak is local-first. This document describes what the current version actua
 | Preferences | `UserDefaults` (`app.flowbreak.mac`, key `FlowBreak.settings.v1`) | Always |
 | Timer state (current session, break due) | `~/Library/Application Support/FlowBreak/state.json` | Always |
 | Focus and break session history (start/end times, pauses, outcome) | `~/Library/Application Support/FlowBreak/sessions.json` | Always |
+| Tasks (titles, notes, Done-when, result notes, progress notes, projects, tags, links) | `~/Library/Application Support/FlowBreak/tasks.json` | When you create tasks |
+| Weekly reflections | `~/Library/Application Support/FlowBreak/reflections.json` | When you write one |
 | Foreground app usage (app name, bundle ID, start/end time) | `~/Library/Application Support/FlowBreak/usage.json` | **Only after you turn on app usage tracking** |
 
 Nothing is uploaded. FlowBreak has no account, server, cloud sync, advertising, fingerprinting, or analytics SDK. It makes no network requests.
@@ -22,6 +24,14 @@ Nothing is uploaded. FlowBreak has no account, server, cloud sync, advertising, 
 - **Private mode** (Settings › Privacy) pauses recording. **Excluded apps** are never recorded.
 - Durations are **approximate** and labelled that way in the app.
 
+## Tasks
+
+- Tasks work entirely offline and need no permissions.
+- FlowBreak never infers that a task is complete. A focus timer ending only asks how it went, and only you mark tasks complete.
+- **Private** tasks show as "Private task" in Insights and weekly summaries (Settings › Tasks).
+- Global shortcuts are **off by default**. They use Carbon's `RegisterEventHotKey`, which only notifies FlowBreak when its own key combination is pressed. FlowBreak never sees other keystrokes and needs no Accessibility permission.
+- Backups are files you save yourself. Restoring keeps a safety copy in `~/Library/Application Support/FlowBreak/Backups`.
+
 ## Website tracking
 
 Not available in this version. Per-website time would need a separate browser extension, which isn't included. FlowBreak never treats a browser's name as a website.
@@ -33,7 +43,7 @@ FlowBreak schedules local notifications through `UNUserNotificationCenter`. They
 ## Export and deletion
 
 - Settings › Privacy and the Insights window can export sessions (CSV), app usage (CSV), or everything (JSON) to a file you choose.
-- **Delete All FlowBreak Data** removes session history and usage records. A session in progress keeps running, and your preferences are kept.
+- **Delete All FlowBreak Data** removes tasks, session history, reflections and usage records. A session in progress keeps running, and your preferences are kept.
 - To remove everything, quit FlowBreak and delete `~/Library/Application Support/FlowBreak` and the app.
 
 ## Logging

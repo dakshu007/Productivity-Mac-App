@@ -134,6 +134,11 @@ jobs:
           NOTES
           EXTRAS=()
           [[ -f build/release-extras/FlowBreak-screenshots.zip ]] && EXTRAS+=(build/release-extras/FlowBreak-screenshots.zip)
+          # Stable file name so README links never go stale across versions.
+          if [[ "$DMG_NAME" == *-unsigned.dmg ]]; then STABLE=build/release-extras/FlowBreak-unsigned.dmg; else STABLE=build/release-extras/FlowBreak.dmg; fi
+          mkdir -p build/release-extras
+          cp "$DMG_PATH" "$STABLE"
+          EXTRAS+=("$STABLE")
           gh release create latest-build "$DMG_PATH" "$DMG_PATH.sha256" "${EXTRAS[@]}" \
             --target "$GITHUB_SHA" \
             --title "FlowBreak $VERSION — latest build" \

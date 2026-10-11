@@ -187,7 +187,10 @@ struct TaskToastView: View {
                 .frame(width: 22, height: 22)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(toast.title).font(.system(size: 12.5, weight: .semibold))
+                Text(toast.title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .fixedSize(horizontal: !compact, vertical: false)
+                    .lineLimit(compact ? 2 : 1)
                 if let detail = toast.detail {
                     Text(detail).font(.system(size: 11)).foregroundStyle(Palette.secondaryText)
                 }
@@ -284,11 +287,14 @@ struct ProofOfDoneView: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Complete without note") { model.completeTask(task.id, note: nil, skipProof: true) }
-                Button("It's done") { model.completeTask(task.id, note: note, skipProof: true) }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
-                    .foregroundStyle(Palette.ink)
+                Button {
+                    model.completeTask(task.id, note: note, skipProof: true)
+                } label: {
+                    Label("It's done", systemImage: "checkmark")
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(width: 120)
             }
         }
         .padding(Spacing.xl)
