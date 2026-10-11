@@ -12,6 +12,36 @@ public enum TimerMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// Global keyboard shortcut choices. Off by default: FlowBreak never installs a
+/// system-wide shortcut unless the user picks one.
+public enum ShortcutPreset: String, Codable, CaseIterable, Sendable {
+    case off
+    case optionCommandT
+    case controlOptionT
+    case controlOptionSpace
+    case optionCommandP
+    case controlOptionP
+    case optionCommandY
+    case controlOptionY
+
+    public var displayName: String {
+        switch self {
+        case .off: return "Off"
+        case .optionCommandT: return "⌥⌘T"
+        case .controlOptionT: return "⌃⌥T"
+        case .controlOptionSpace: return "⌃⌥Space"
+        case .optionCommandP: return "⌥⌘P"
+        case .controlOptionP: return "⌃⌥P"
+        case .optionCommandY: return "⌥⌘Y"
+        case .controlOptionY: return "⌃⌥Y"
+        }
+    }
+
+    public static let quickAddChoices: [ShortcutPreset] = [.off, .optionCommandT, .controlOptionT, .controlOptionSpace]
+    public static let focusChoices: [ShortcutPreset] = [.off, .optionCommandP, .controlOptionP]
+    public static let todayChoices: [ShortcutPreset] = [.off, .optionCommandY, .controlOptionY]
+}
+
 /// Quiet hours, expressed as minutes after local midnight. May wrap past midnight.
 public struct QuietHours: Codable, Equatable, Sendable {
     public var startMinute: Int
@@ -69,6 +99,20 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var privateMode: Bool = false
     public var excludedBundleIDs: [String] = []
 
+    // Tasks
+    public var quickAddShortcut: ShortcutPreset = .off
+    public var toggleFocusShortcut: ShortcutPreset = .off
+    public var openTodayShortcut: ShortcutPreset = .off
+    /// Ask "how did it go?" after a task-linked focus session.
+    public var askForOutcome: Bool = true
+    /// Move a task to In Progress when a focus session starts on it.
+    public var moveToInProgressOnFocus: Bool = true
+    /// End of the workday (minutes after midnight), for the Today workload hint.
+    public var workdayEndMinute: Int = 18 * 60
+    public var hidePrivateTasksInInsights: Bool = true
+    public var completionHaptics: Bool = true
+    public var lastBackupAt: Date?
+
     // Behaviour
     public var showInDock: Bool = false
     public var hasCompletedOnboarding: Bool = false
@@ -83,6 +127,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case quietHoursEnabled, quietHours, remindAfterWake
         case appTrackingEnabled, privateMode, excludedBundleIDs
         case showInDock, hasCompletedOnboarding
+        case quickAddShortcut, toggleFocusShortcut, openTodayShortcut, askForOutcome, moveToInProgressOnFocus
+        case workdayEndMinute, hidePrivateTasksInInsights, completionHaptics, lastBackupAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -111,6 +157,15 @@ public struct AppSettings: Codable, Equatable, Sendable {
         excludedBundleIDs = (try? c.decodeIfPresent([String].self, forKey: .excludedBundleIDs)) ?? d.excludedBundleIDs
         showInDock = (try? c.decodeIfPresent(Bool.self, forKey: .showInDock)) ?? d.showInDock
         hasCompletedOnboarding = (try? c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding)) ?? d.hasCompletedOnboarding
+        quickAddShortcut = (try? c.decodeIfPresent(ShortcutPreset.self, forKey: .quickAddShortcut)) ?? d.quickAddShortcut
+        toggleFocusShortcut = (try? c.decodeIfPresent(ShortcutPreset.self, forKey: .toggleFocusShortcut)) ?? d.toggleFocusShortcut
+        openTodayShortcut = (try? c.decodeIfPresent(ShortcutPreset.self, forKey: .openTodayShortcut)) ?? d.openTodayShortcut
+        askForOutcome = (try? c.decodeIfPresent(Bool.self, forKey: .askForOutcome)) ?? d.askForOutcome
+        moveToInProgressOnFocus = (try? c.decodeIfPresent(Bool.self, forKey: .moveToInProgressOnFocus)) ?? d.moveToInProgressOnFocus
+        workdayEndMinute = (try? c.decodeIfPresent(Int.self, forKey: .workdayEndMinute)) ?? d.workdayEndMinute
+        hidePrivateTasksInInsights = (try? c.decodeIfPresent(Bool.self, forKey: .hidePrivateTasksInInsights)) ?? d.hidePrivateTasksInInsights
+        completionHaptics = (try? c.decodeIfPresent(Bool.self, forKey: .completionHaptics)) ?? d.completionHaptics
+        lastBackupAt = (try? c.decodeIfPresent(Date.self, forKey: .lastBackupAt)) ?? nil
         self = self.sanitized()
     }
 
@@ -129,6 +184,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         s.repeatCount = min(max(s.repeatCount, 0), AppSettings.maxRepeatCount)
         s.quietHours.startMinute = min(max(s.quietHours.startMinute, 0), 24 * 60 - 1)
         s.quietHours.endMinute = min(max(s.quietHours.endMinute, 0), 24 * 60 - 1)
+        s.workdayEndMinute = min(max(s.workdayEndMinute, 0), 24 * 60 - 1)
         return s
     }
 

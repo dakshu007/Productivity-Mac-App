@@ -120,7 +120,7 @@ public final class TimerEngine {
     // MARK: - Focus
 
     @discardableResult
-    public func startFocus(at now: Date, duration: TimeInterval? = nil) -> [EngineEvent] {
+    public func startFocus(at now: Date, duration: TimeInterval? = nil, taskID: UUID? = nil, intent: String? = nil) -> [EngineEvent] {
         var events = reconcile(at: now)
         switch state.phase {
         case .focusing:
@@ -140,7 +140,7 @@ public final class TimerEngine {
         case .idle, .breakComplete:
             break
         }
-        events.append(beginFocus(at: now, duration: duration ?? configuration.focusDuration))
+        events.append(beginFocus(at: now, duration: duration ?? configuration.focusDuration, taskID: taskID, intent: intent))
         persist()
         return events
     }
@@ -190,6 +190,9 @@ public final class TimerEngine {
             if var session = state.current {
                 close(&session, status: .cancelled, at: now)
                 upsert(session)
+                if session.taskID != nil && (session.actualDuration ?? 0) >= 60 {
+                    state.pendingCheckIn = session.id
+                }
                 events.append(.sessionCancelled(session))
             }
         case .onBreak:
@@ -307,6 +310,54 @@ public final class TimerEngine {
         persist()
     }
 
+    // MARK: - Tasks
+
+    /// Records how a task-linked focus session went. Never changes the task itself.
+    @discardableResult
+    public func recordOutcome(sessionID: UUID, outcome: SessionOutcome, note: String?, at now: Date) -> [EngineEvent] {
+        var events = reconcile(at: now)
+        guard let index = sessions.lastIndex(where: { $0.id == sessionID }) else { return events }
+        var session = sessions[index]
+        session.outcome = outcome
+        let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmed, !trimmed.isEmpty { session.progressNote = trimmed }
+        sessions[index] = session
+        if state.current?.id == sessionID { state.current = session }
+        if state.pendingCheckIn == sessionID { state.pendingCheckIn = nil }
+        persist()
+        events.append(.outcomeRecorded(session))
+        return events
+    }
+
+    /// Closes the check-in without an answer.
+    public func dismissCheckIn(at now: Date) {
+        reconcile(at: now)
+        guard let pending = state.pendingCheckIn else { return }
+        if let index = sessions.lastIndex(where: { $0.id == pending }), sessions[index].outcome == nil {
+            sessions[index].outcome = .notRecorded
+        }
+        state.pendingCheckIn = nil
+        persist()
+    }
+
+    /// Links a focus session (finished or current) to a different task, or to none.
+    @discardableResult
+    public func reassign(sessionID: UUID, to taskID: UUID?, at now: Date) -> Bool {
+        reconcile(at: now)
+        guard let index = sessions.lastIndex(where: { $0.id == sessionID }), sessions[index].kind.isFocus else { return false }
+        sessions[index].taskID = taskID
+        if sessions[index].outcome == .wrongTask { sessions[index].outcome = nil }
+        if state.current?.id == sessionID { state.current?.taskID = taskID }
+        persist()
+        return true
+    }
+
+    /// Focus sessions linked to a task. Links survive task deletion, so insights can
+    /// still show the time as "Deleted task".
+    public func sessions(forTask taskID: UUID) -> [FocusSession] {
+        sessions.filter { $0.taskID == taskID && $0.kind.isFocus }
+    }
+
     // MARK: - Data management
 
     /// Deletes history. An in-progress session is kept so the timer keeps working.
@@ -317,6 +368,20 @@ public final class TimerEngine {
             sessions = []
         }
         state.completedWorkSessionsInCycle = 0
+        state.lastBreak = nil
+        state.pendingCheckIn = nil
+        persist()
+    }
+
+    /// Replaces history (restore from backup). An in-progress session is kept.
+    public func replaceHistory(with restored: [FocusSession]) {
+        var merged = restored.filter { !$0.status.isActive }
+        if let current = state.current {
+            merged.removeAll { $0.id == current.id }
+            merged.append(current)
+        }
+        sessions = merged.sorted { $0.startedAt < $1.startedAt }
+        state.pendingCheckIn = nil
         state.lastBreak = nil
         persist()
     }
@@ -329,8 +394,16 @@ public final class TimerEngine {
 
     // MARK: - Internals
 
-    private func beginFocus(at start: Date, duration: TimeInterval) -> EngineEvent {
-        let session = FocusSession(kind: configuration.focusKind, start: start, plannedDuration: max(1, duration))
+    private func beginFocus(at start: Date, duration: TimeInterval, taskID: UUID? = nil, intent: String? = nil) -> EngineEvent {
+        let cleanIntent = intent?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let session = FocusSession(
+            kind: configuration.focusKind,
+            start: start,
+            plannedDuration: max(1, duration),
+            taskID: taskID,
+            intent: (cleanIntent?.isEmpty ?? true) ? nil : cleanIntent
+        )
+        state.pendingCheckIn = nil
         state.phase = .focusing
         state.current = session
         state.breakDue = nil
@@ -343,6 +416,7 @@ public final class TimerEngine {
         var session = original
         close(&session, status: .completed, at: deadline)
         upsert(session)
+        if session.taskID != nil { state.pendingCheckIn = session.id }
 
         var suggested: SessionKind = .shortBreak
         if session.kind == .pomodoroFocus {
@@ -397,6 +471,7 @@ public final class TimerEngine {
         close(&session, status: .endedEarly, at: now)
         upsert(session)
         state.current = nil
+        if session.kind.isFocus && session.taskID != nil { state.pendingCheckIn = session.id }
         return session.kind.isFocus ? .focusEndedEarly(session) : .breakEndedEarly(session)
     }
 

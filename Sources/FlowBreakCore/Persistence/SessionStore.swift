@@ -71,37 +71,37 @@ public final class JSONFileStore: SessionPersisting, UsagePersisting {
     public var usageURL: URL { directory.appendingPathComponent("usage.json") }
 
     public func loadState() throws -> EngineState? {
-        try read(EngineState.self, from: stateURL)
+        try readFile(EngineState.self, from: stateURL)
     }
 
     public func saveState(_ state: EngineState) throws {
-        try write(state, to: stateURL)
+        try writeFile(state, to: stateURL)
     }
 
     public func loadSessions() throws -> [FocusSession] {
-        try read([FocusSession].self, from: sessionsURL) ?? []
+        try readFile([FocusSession].self, from: sessionsURL) ?? []
     }
 
     public func saveSessions(_ sessions: [FocusSession]) throws {
-        try write(sessions, to: sessionsURL)
+        try writeFile(sessions, to: sessionsURL)
     }
 
     public func loadUsage() throws -> [UsageSample] {
-        try read([UsageSample].self, from: usageURL) ?? []
+        try readFile([UsageSample].self, from: usageURL) ?? []
     }
 
     public func saveUsage(_ samples: [UsageSample]) throws {
-        try write(samples, to: usageURL)
+        try writeFile(samples, to: usageURL)
     }
 
     /// Deletes every FlowBreak data file.
     public func deleteAll() throws {
-        for url in [stateURL, sessionsURL, usageURL] where fileManager.fileExists(atPath: url.path) {
+        for url in [stateURL, sessionsURL, usageURL, directory.appendingPathComponent("tasks.json"), directory.appendingPathComponent("reflections.json")] where fileManager.fileExists(atPath: url.path) {
             try fileManager.removeItem(at: url)
         }
     }
 
-    private func read<T: Codable>(_ type: T.Type, from url: URL) throws -> T? {
+    func readFile<T: Codable>(_ type: T.Type, from url: URL) throws -> T? {
         guard fileManager.fileExists(atPath: url.path) else { return nil }
         let data: Data
         do {
@@ -126,7 +126,7 @@ public final class JSONFileStore: SessionPersisting, UsagePersisting {
         }
     }
 
-    private func write<T: Codable>(_ value: T, to url: URL) throws {
+    func writeFile<T: Codable>(_ value: T, to url: URL) throws {
         do {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             let file = StoredFile(schemaVersion: JSONFileStore.schemaVersion, savedAt: Date(), payload: value)

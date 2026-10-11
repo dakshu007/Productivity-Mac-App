@@ -20,6 +20,26 @@ public enum SessionKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// How a task-linked focus session went, recorded by the user afterwards.
+/// A timer ending never completes a task by itself.
+public enum SessionOutcome: String, Codable, CaseIterable, Sendable {
+    case completed
+    case progressMade
+    case continueLater
+    case wrongTask
+    case notRecorded
+
+    public var displayName: String {
+        switch self {
+        case .completed: return "Completed"
+        case .progressMade: return "Progress made"
+        case .continueLater: return "Continue later"
+        case .wrongTask: return "Wrong task"
+        case .notRecorded: return "Not recorded"
+        }
+    }
+}
+
 /// Lifecycle status of a session record.
 ///
 /// - `completed`: ran until its deadline.
@@ -86,13 +106,21 @@ public struct FocusSession: Codable, Equatable, Identifiable, Sendable {
     public var actualDuration: TimeInterval?
     /// For breaks: the focus session this break follows, used for break adherence.
     public var followsFocusID: UUID?
+    /// For focus sessions: the task worked on, if any.
+    public var taskID: UUID?
+    /// Optional intention typed when starting ("Draft the intro").
+    public var intent: String?
+    public var outcome: SessionOutcome?
+    public var progressNote: String?
 
     public init(
         id: UUID = UUID(),
         kind: SessionKind,
         start: Date,
         plannedDuration: TimeInterval,
-        followsFocusID: UUID? = nil
+        followsFocusID: UUID? = nil,
+        taskID: UUID? = nil,
+        intent: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -106,6 +134,10 @@ public struct FocusSession: Codable, Equatable, Identifiable, Sendable {
         self.endedAt = nil
         self.actualDuration = nil
         self.followsFocusID = followsFocusID
+        self.taskID = taskID
+        self.intent = intent
+        self.outcome = nil
+        self.progressNote = nil
     }
 
     /// When the current pause began, if paused.

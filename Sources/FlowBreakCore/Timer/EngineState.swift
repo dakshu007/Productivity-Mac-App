@@ -53,19 +53,23 @@ public struct EngineState: Codable, Equatable, Sendable {
     public var lastBreak: FocusSession?
     /// Pomodoro work sessions completed since the last long break.
     public var completedWorkSessionsInCycle: Int
+    /// A finished task-linked focus session waiting for the "how did it go?" check-in.
+    public var pendingCheckIn: UUID?
 
     public init(
         phase: EnginePhase = .idle,
         current: FocusSession? = nil,
         breakDue: BreakDue? = nil,
         lastBreak: FocusSession? = nil,
-        completedWorkSessionsInCycle: Int = 0
+        completedWorkSessionsInCycle: Int = 0,
+        pendingCheckIn: UUID? = nil
     ) {
         self.phase = phase
         self.current = current
         self.breakDue = breakDue
         self.lastBreak = lastBreak
         self.completedWorkSessionsInCycle = completedWorkSessionsInCycle
+        self.pendingCheckIn = pendingCheckIn
     }
 
     public static let idle = EngineState()
@@ -90,4 +94,5 @@ public enum EngineEvent: Equatable, Sendable {
     case breakSkipped(BreakDue)
     case snoozed(until: Date)
     case clockAdjusted(by: TimeInterval)
+    case outcomeRecorded(FocusSession)
 }
