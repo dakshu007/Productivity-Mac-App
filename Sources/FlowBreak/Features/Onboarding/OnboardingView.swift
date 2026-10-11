@@ -75,6 +75,7 @@ struct OnboardingView: View {
             title("Focus, then a short break")
             row("timer", "Focus sessions", "Start a session from the menu bar. The countdown keeps time correctly even if your Mac sleeps.")
             row("leaf", "Breaks", "When a session ends, FlowBreak suggests a short break with optional eye, movement, water or breathing activities.")
+            row("checklist", "Tasks", "Capture what you want to finish, focus on it, and close the loop with a calm Flow Finish.")
             row("chart.bar.xaxis", "Insights", "See your focus time and breaks for today, the last week, or the last month.")
         }
     }

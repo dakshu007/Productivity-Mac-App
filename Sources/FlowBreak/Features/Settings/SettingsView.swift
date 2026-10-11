@@ -8,6 +8,7 @@ struct SettingsView: View {
     private static let tabs: [(tab: SettingsTab, title: String, icon: String)] = [
         (.focus, "Focus", "timer"),
         (.reminders, "Reminders", "bell"),
+        (.tasks, "Tasks", "checklist"),
         (.privacy, "Privacy", "hand.raised"),
         (.general, "General", "gearshape"),
         (.about, "About", "info.circle"),
@@ -27,6 +28,7 @@ struct SettingsView: View {
                 switch model.settingsTab {
                 case .focus: FocusSettingsView()
                 case .reminders: ReminderSettingsView()
+                case .tasks: TaskSettingsView()
                 case .privacy: PrivacySettingsView()
                 case .general: GeneralSettingsView()
                 case .about: AboutView()
@@ -293,8 +295,21 @@ struct PrivacySettingsView: View {
 
             Section {
                 HStack {
+                    Button("Back Up Now…") { model.backUpNow() }
+                    Button("Restore from Backup…") { model.chooseBackupToRestore() }
+                }
+                LabeledContent("Last backup", value: model.settings.lastBackupAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Never")
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("A backup is one JSON file with your tasks, sessions, reflections, app usage and settings. Restoring shows what's inside first and keeps a safety copy of your current data.")
+                    .settingsFootnote()
+            }
+
+            Section {
+                HStack {
                     Button("Export Sessions (CSV)…") { model.export(.sessionsCSV) }
-                    Button("Export All (JSON)…") { model.export(.json) }
+                    Button("Export Tasks (CSV)…") { model.exportTasks(.csv) }
                 }
                 Button("Delete All FlowBreak Data…", role: .destructive) { confirmDelete = true }
             } header: {
@@ -308,7 +323,17 @@ struct PrivacySettingsView: View {
         .confirmationDialog("Delete all FlowBreak data?", isPresented: $confirmDelete) {
             Button("Delete All Data", role: .destructive) { model.deleteAllData() }
         } message: {
-            Text("This permanently removes your session history and app usage records from this Mac. A session in progress keeps running. Settings are kept.")
+            Text("This permanently removes your tasks, session history, reflections and app usage records from this Mac. A session in progress keeps running. Settings are kept. Consider backing up first.")
+        }
+        .alert(
+            "Restore this backup?",
+            isPresented: Binding(get: { model.pendingRestore != nil }, set: { if !$0 { model.pendingRestore = nil } }),
+            presenting: model.pendingRestore
+        ) { _ in
+            Button("Replace My Data", role: .destructive) { model.confirmRestore() }
+            Button("Cancel", role: .cancel) { model.pendingRestore = nil }
+        } message: { pending in
+            Text(restoreMessage(pending.preview))
         }
         .alert("Turn on app usage tracking?", isPresented: $confirmEnableTracking) {
             Button("Turn On") { model.update { $0.appTrackingEnabled = true } }
@@ -316,6 +341,22 @@ struct PrivacySettingsView: View {
         } message: {
             Text("FlowBreak will record the name of the app in front and roughly how long you use it, only on this Mac. Idle time over 2 minutes isn't counted. You can pause, exclude apps, export or delete this data at any time.")
         }
+    }
+}
+
+extension PrivacySettingsView {
+    func restoreMessage(_ p: BackupPreview) -> String {
+        var lines = [
+            "Backup from \(p.exportedAt.formatted(date: .abbreviated, time: .shortened)):",
+            "\(p.taskCount) tasks · \(p.sessionCount) sessions · \(p.reflectionCount) reflections · \(p.usageCount) app-usage records\(p.includesSettings ? " · settings" : "")",
+            "",
+            "Your current data will be replaced. A safety copy is saved first in Application Support/FlowBreak/Backups.",
+        ]
+        if !p.warnings.isEmpty {
+            lines.append("")
+            lines.append(contentsOf: p.warnings.map { "• " + $0 })
+        }
+        return lines.joined(separator: "\n")
     }
 }
 

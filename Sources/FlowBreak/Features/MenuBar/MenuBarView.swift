@@ -13,14 +13,26 @@ struct MenuBarView: View {
             Divider()
             VStack(spacing: Spacing.l) {
                 banners
+                if let session = model.pendingCheckInSession, let task = model.pendingCheckInTask, model.state.phase != .focusing {
+                    CheckInCard(session: session, task: task)
+                }
                 timerDisplay
+                PopoverTaskStrip()
                 primaryAction
                 secondaryActions
                 if model.state.phase == .idle {
                     modePicker
                 }
+                if model.state.phase == .idle || model.state.phase == .breakComplete, !model.bigThreeToday.isEmpty {
+                    BigThreeMiniList()
+                }
             }
             .padding(Spacing.l)
+            if let toast = model.toast {
+                TaskToastView(toast: toast, compact: true)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.bottom, Spacing.m)
+            }
             Divider()
             todaySummary
                 .padding(.horizontal, Spacing.l)
@@ -264,11 +276,17 @@ struct MenuBarView: View {
             MetricView(title: "Focus today", value: DurationFormatter.short(today.focusTime), help: "Un-paused time in focus sessions since midnight.", compact: true)
             MetricView(title: "Sessions", value: "\(today.completed)", help: "Focus sessions that ran to completion today.", compact: true)
             MetricView(title: "Breaks", value: "\(today.breaks)", help: "Breaks you started today.", compact: true)
+            MetricView(title: "Tasks done", value: "\(today.tasksDone)", help: "Tasks you completed today.", compact: true)
         }
     }
 
     private var footer: some View {
-        HStack(spacing: Spacing.xs) {
+        HStack(spacing: 2) {
+            Button {
+                model.closePopover?()
+                model.openWindow?(.tasks)
+            } label: { Label("Tasks", systemImage: "checklist") }
+                .keyboardShortcut("t", modifiers: .command)
             Button {
                 model.closePopover?()
                 model.openWindow?(.insights)
@@ -280,10 +298,8 @@ struct MenuBarView: View {
             } label: { Label("Settings", systemImage: "gearshape") }
                 .keyboardShortcut(",", modifiers: .command)
             Spacer()
-            Text("v\(model.versionString)")
-                .font(.system(size: 10))
-                .foregroundStyle(Palette.secondaryText.opacity(0.8))
             Button { NSApp.terminate(nil) } label: { Text("Quit") }
+                .help("Quit FlowBreak \(model.versionString)")
                 .keyboardShortcut("q", modifiers: .command)
         }
         .buttonStyle(FooterButtonStyle())
@@ -307,5 +323,202 @@ struct PomodoroCycleView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(min(completed, total)) of \(total) work sessions completed in this cycle")
+    }
+}
+
+// MARK: - Tasks in the popover
+
+/// Below the timer: which task the next session is for, or the task being worked on.
+struct PopoverTaskStrip: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        switch model.state.phase {
+        case .focusing:
+            if let task = model.currentTask {
+                activeTask(task)
+            } else {
+                HStack {
+                    Text("No task linked").font(.system(size: 12)).foregroundStyle(Palette.secondaryText)
+                    Spacer()
+                    taskMenu(title: "Link a task") { model.relinkCurrentSession(to: $0) }
+                }
+            }
+        case .idle, .breakComplete:
+            nextUp
+        case .breakDue, .onBreak:
+            EmptyView()
+        }
+    }
+
+    private var nextUp: some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: "scope")
+                .foregroundStyle(model.nextTask == nil ? Palette.secondaryText : Palette.accentText)
+                .font(.system(size: 12))
+            taskMenu(title: model.nextTask?.title ?? "Choose a task (optional)") { model.nextTaskID = $0 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                model.closePopover?()
+                model.openWindow?(.quickAdd)
+            } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            .frame(width: 34)
+            .help("Add a task")
+            .accessibilityLabel("Add task")
+        }
+    }
+
+    private func activeTask(_ task: TaskItem) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text("WORKING ON")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Palette.secondaryText)
+                Spacer()
+                taskMenu(title: "Change") { model.relinkCurrentSession(to: $0) }
+                    .fixedSize()
+            }
+            Button {
+                model.reveal(task.id)
+            } label: {
+                Text(task.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .help("Show task details")
+            if let intent = model.state.current?.intent {
+                Label(intent, systemImage: "target").font(.system(size: 11.5)).foregroundStyle(Palette.secondaryText)
+            }
+            if let dod = task.definitionOfDone {
+                Label("Done when: \(dod)", systemImage: "checkmark.seal").font(.system(size: 11.5)).foregroundStyle(Palette.secondaryText)
+            }
+            Button {
+                model.requestComplete(task.id)
+            } label: {
+                Label("Complete task", systemImage: "checkmark.circle")
+            }
+            .buttonStyle(.link)
+            .font(.system(size: 11.5))
+        }
+        .padding(Spacing.s + 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous).fill(Palette.track.opacity(0.7)))
+    }
+
+    /// A menu of today's tasks. `select(nil)` means "no task".
+    private func taskMenu(title: String, select: @escaping (UUID?) -> Void) -> some View {
+        Menu {
+            Button("No task — open focus") { select(nil) }
+            let candidates = model.focusCandidates
+            if !candidates.isEmpty {
+                Divider()
+                ForEach(candidates) { task in
+                    Button(task.title) { select(task.id) }
+                }
+            }
+            Divider()
+            Button("Open Tasks…") {
+                model.closePopover?()
+                model.openWindow?(.tasks)
+            }
+        } label: {
+            Text(title).lineLimit(1)
+        }
+        .font(.system(size: 12))
+    }
+}
+
+/// "How did it go?" after a task-linked session. Never completes a task by itself.
+struct CheckInCard: View {
+    @EnvironmentObject private var model: AppModel
+    var session: FocusSession
+    var task: TaskItem
+    @State private var writingNote = false
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack {
+                Label("How did it go?", systemImage: "flag.checkered")
+                    .font(.system(size: 12.5, weight: .semibold))
+                Spacer()
+                Button { model.dismissCheckIn() } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)) }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Palette.secondaryText)
+                    .accessibilityLabel("Skip check-in")
+            }
+            Text(task.title).font(.system(size: 12.5, weight: .medium)).lineLimit(2)
+            if let dod = task.definitionOfDone {
+                Text("Done when: \(dod)").font(.system(size: 11)).foregroundStyle(Palette.secondaryText)
+            }
+            if writingNote {
+                TextField("What moved forward? (optional)", text: $note)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { model.recordCheckIn(.progressMade, note: note) }
+                HStack {
+                    Button("Back") { writingNote = false }
+                    Spacer()
+                    Button("Save progress") { model.recordCheckIn(.progressMade, note: note) }
+                        .keyboardShortcut(.defaultAction)
+                }
+                .controlSize(.small)
+            } else {
+                HStack(spacing: 6) {
+                    Button("Completed") { model.recordCheckIn(.completed) }
+                    Button("Progress made") { writingNote = true }
+                    Button("Later") { model.recordCheckIn(.continueLater) }
+                        .help("Keep the task open for another session")
+                }
+                .buttonStyle(SmallPillButtonStyle())
+                Menu("Wrong task?") {
+                    ForEach(model.focusCandidates.filter { $0.id != task.id }) { other in
+                        Button(other.title) { model.reassignPendingSession(to: other.id) }
+                    }
+                    Divider()
+                    Button("It wasn't for a task") {
+                        model.reassignPendingSession(to: nil)
+                        model.dismissCheckIn()
+                    }
+                }
+                .font(.system(size: 11))
+                .fixedSize()
+            }
+        }
+        .padding(Spacing.m)
+        .background(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous).fill(Palette.accent.opacity(0.12)))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// Today's Big Three with completion checkboxes.
+struct BigThreeMiniList: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Today's Big Three", systemImage: "star.fill")
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(Palette.secondaryText)
+            ForEach(model.bigThreeToday) { task in
+                HStack(spacing: Spacing.s) {
+                    CompletionCheckbox(isDone: task.status == .completed, size: 15) {
+                        task.status == .completed ? model.reopen(task.id) : model.requestComplete(task.id)
+                    }
+                    Text(task.title)
+                        .font(.system(size: 12))
+                        .strikethrough(task.status == .completed)
+                        .foregroundStyle(task.status == .completed ? Palette.secondaryText : Color.primary)
+                        .lineLimit(1)
+                    Spacer()
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

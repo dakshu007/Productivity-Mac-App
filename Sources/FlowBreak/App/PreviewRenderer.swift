@@ -199,6 +199,75 @@ enum PreviewRenderer {
                 model.settingsTab = .about
                 return AnyView(SettingsView().environmentObject(model))
             },
+            Scenario(name: "35-settings-tasks", size: NSSize(width: 580, height: 680)) { model in
+                model.settingsTab = .tasks
+                model.update { $0.quickAddShortcut = .optionCommandT }
+                return AnyView(SettingsView().environmentObject(model))
+            },
+            Scenario(name: "60-tasks-today", size: NSSize(width: 1020, height: 680)) { model in
+                let ids = seedTasks(model)
+                model.driveForPreview(now: Date()) { engine in
+                    engine.startFocus(at: Date().addingTimeInterval(-50 * minute), taskID: ids.first)
+                    engine.stop(at: Date().addingTimeInterval(-20 * minute))
+                }
+                model.taskList = .today
+                model.selectedTaskIDs = ids.first.map { [$0] } ?? []
+                return AnyView(TasksView().environmentObject(model))
+            },
+            Scenario(name: "61-tasks-inbox-toast", size: NSSize(width: 1020, height: 680)) { model in
+                let ids = seedTasks(model)
+                model.taskList = .inbox
+                if ids.count > 4 {
+                    model.taskList = .today
+                    model.completeTask(ids[2], note: nil, skipProof: true)
+                    model.taskList = .inbox
+                }
+                return AnyView(TasksView().environmentObject(model))
+            },
+            Scenario(name: "62-tasks-empty", size: NSSize(width: 1020, height: 560)) { model in
+                model.taskList = .today
+                return AnyView(TasksView().environmentObject(model))
+            },
+            Scenario(name: "63-quick-add", size: NSSize(width: 560, height: 110)) { model in
+                AnyView(QuickAddView(onClose: {}, initialText: "Review MyKavo SEO tomorrow #marketing !high 30m").environmentObject(model))
+            },
+            Scenario(name: "64-start-focus", size: NSSize(width: 420, height: 300)) { model in
+                let ids = seedTasks(model)
+                let task = model.task(ids.first) ?? TaskItem(title: "Example", createdAt: Date())
+                return AnyView(StartFocusView(task: task, defaultMinutes: 45, onDone: {}).environmentObject(model))
+            },
+            Scenario(name: "65-proof-of-done", size: NSSize(width: 420, height: 330)) { model in
+                let ids = seedTasks(model)
+                let task = model.task(ids.first) ?? TaskItem(title: "Example", createdAt: Date())
+                return AnyView(ProofOfDoneView(task: task).environmentObject(model))
+            },
+            Scenario(name: "66-popover-idle-next-up", size: nil) { model in
+                let ids = seedTasks(model)
+                model.nextTaskID = ids.first
+                model.driveForPreview(now: Date()) { _ in }
+                return popover(model)
+            },
+            Scenario(name: "67-popover-focusing-task", size: nil) { model in
+                let ids = seedTasks(model)
+                let now = Date()
+                model.driveForPreview(now: now) { engine in
+                    engine.startFocus(at: now.addingTimeInterval(-18 * minute), taskID: ids.first, intent: "Outline the three sections")
+                }
+                return popover(model)
+            },
+            Scenario(name: "68-popover-check-in", size: nil) { model in
+                let ids = seedTasks(model)
+                let now = Date()
+                model.driveForPreview(now: now) { engine in
+                    engine.startFocus(at: now.addingTimeInterval(-46 * minute), taskID: ids.first)
+                    engine.reconcile(at: now)
+                }
+                return popover(model)
+            },
+            Scenario(name: "23-insights-tasks", size: NSSize(width: 760, height: 2300)) { model in
+                seedHistory(model)
+                return AnyView(InsightsView(initialRange: .last7Days).environmentObject(model))
+            },
         ] + OnboardingView.Page.allCases.map { page in
             Scenario(name: "4\(page.rawValue)-onboarding-\(page)", size: NSSize(width: 560, height: 500)) { model in
                 model.setPreviewState(notificationStatus: .notDetermined)
@@ -217,6 +286,7 @@ enum PreviewRenderer {
     /// A week of plausible history, generated through the real engine so every
     /// record is internally consistent. Preview-only; never written to user data.
     private static func seedHistory(_ model: AppModel) {
+        let taskIDs = seedTasks(model)
         let calendar = Calendar.current
         let now = Date()
         let today = calendar.startOfDay(for: now)
@@ -228,7 +298,8 @@ enum PreviewRenderer {
                 var t = day.addingTimeInterval(9 * 3600 + Double((dayOffset + 6) * 7) * minute)
                 for index in 0..<sessionsToday {
                     if t.addingTimeInterval(50 * minute) > now { break }
-                    engine.startFocus(at: t)
+                    let linked = taskIDs.isEmpty || index == 1 ? nil : taskIDs[(index + dayOffset + 6) % taskIDs.count]
+                    engine.startFocus(at: t, taskID: linked)
                     if index == 2 {
                         engine.pause(at: t.addingTimeInterval(20 * minute))
                         t = t.addingTimeInterval(30 * minute)
@@ -264,6 +335,51 @@ enum PreviewRenderer {
             t = t.addingTimeInterval(minutes * minute)
         }
         model.setPreviewState(notificationStatus: .authorized, usage: samples.filter { $0.end <= now })
+    }
+
+    /// A realistic task list for screenshots. Preview-only; never written to user data.
+    @discardableResult
+    private static func seedTasks(_ model: AppModel) -> [UUID] {
+        if !model.tasks.isEmpty { return model.tasks.filter(\.isOpen).map(\.id) }
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        let created = now.addingTimeInterval(-3 * 86_400)
+        var ids: [UUID] = []
+        model.seedTasksForPreview { repo in
+            func add(_ draft: TaskDraft) -> UUID? { try? repo.add(draft, at: created).id }
+            if let id = add(TaskDraft(title: "Write the launch blog post", status: .today, priority: .high, definitionOfDone: "Draft shared with the team for review", estimatedMinutes: 90, project: "Launch", tags: ["writing"])) {
+                ids.append(id)
+                try? repo.setBigThree(id, enabled: true, on: now, at: created)
+                try? repo.add(TaskDraft(title: "Outline", parentID: id), at: created)
+                try? repo.add(TaskDraft(title: "First draft", parentID: id), at: created)
+                if let outline = repo.subtasks(of: id).first { repo.complete(outline.id, at: created) }
+                repo.addProgressNote(id, text: "Intro and outline done", sessionID: nil, at: now.addingTimeInterval(-7200))
+            }
+            if let id = add(TaskDraft(title: "Fix broken links on pricing page", status: .today, priority: .critical, definitionOfDone: "All links return 200", estimatedMinutes: 30, project: "Website", tags: ["bug"])) {
+                ids.append(id)
+                try? repo.setBigThree(id, enabled: true, on: now, at: created)
+            }
+            if let id = add(TaskDraft(title: "Review MyKavo SEO report", status: .next, dueAt: today, estimatedMinutes: 30, project: "Marketing", tags: ["marketing"])) {
+                ids.append(id)
+                try? repo.setBigThree(id, enabled: true, on: now, at: created)
+            }
+            if let id = add(TaskDraft(title: "Reply to design feedback", status: .today, estimatedMinutes: 15, project: "Launch")) { ids.append(id) }
+            if let id = add(TaskDraft(title: "Renew domain", status: .next, dueAt: yesterday, project: "Website")) { ids.append(id) }
+            if let id = add(TaskDraft(title: "Weekly planning", status: .today, estimatedMinutes: 20)) {
+                ids.append(id)
+                repo.update(id, at: created) { $0.recurrence = .weekly }
+            }
+            if let id = add(TaskDraft(title: "Book dentist appointment", status: .inbox, dueAt: tomorrow, tags: ["personal"])) { ids.append(id) }
+            if let id = add(TaskDraft(title: "Idea: newsletter about focus rituals", status: .inbox, tags: ["idea"])) { ids.append(id) }
+            if let id = add(TaskDraft(title: "Learn SwiftData migrations", status: .someday)) { ids.append(id) }
+            if let done = add(TaskDraft(title: "Send invoice to Northwind", status: .today, project: "Admin")) {
+                repo.complete(done, note: "Sent via email", at: now.addingTimeInterval(-5400))
+            }
+        }
+        return ids
     }
 
     private static func render(_ view: AnyView, model: AppModel, size: NSSize?, appearance: NSAppearance, to url: URL) -> Bool {

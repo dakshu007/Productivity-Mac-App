@@ -19,6 +19,8 @@ struct InsightsView: View {
                 header
                 metrics(summary)
                 chart(summary)
+                TaskInsightsSection(range: range)
+                WeeklyReviewCard()
                 timeline(summary)
                 appUsage
                 websiteUsage
@@ -293,6 +295,9 @@ struct InsightsView: View {
                 Text("• Focus time counts only un-paused time. Sessions you stopped or ended early still count their focused minutes but not as completed sessions.")
                 Text("• Break adherence = completed focus sessions followed by a break ÷ completed focus sessions.")
                 Text("• Interrupted sessions were left running when FlowBreak quit unexpectedly; they count only up to the last confirmed moment.")
+                Text("• Task focus time counts only focus sessions linked to the task — breaks never count. Estimates are shown next to recorded time; untracked time is never guessed.")
+                Text("• Average sessions per completed task = linked focus sessions (all time) of tasks completed in this period ÷ those tasks.")
+                Text("• Carried over = open tasks that were due this week or earlier.")
                 Text("• Opening this window never changes or resets your data.")
             }
             .font(.system(size: 12))

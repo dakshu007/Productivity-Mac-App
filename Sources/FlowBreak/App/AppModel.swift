@@ -9,10 +9,12 @@ enum AppWindow: String {
     case insights
     case onboarding
     case guidedBreak
+    case tasks
+    case quickAdd
 }
 
 enum SettingsTab: String, Hashable {
-    case focus, reminders, privacy, general, about
+    case focus, reminders, tasks, privacy, general, about
 }
 
 /// The app's single source of observable state. Views call intent methods here;
@@ -34,12 +36,38 @@ final class AppModel: ObservableObject {
         didSet { settingsChanged(from: oldValue) }
     }
 
+    // Tasks
+    @Published internal(set) var tasks: [TaskItem] = []
+    @Published internal(set) var reflections: [WeeklyReflection] = []
+    @Published var taskList: TaskListKind = .today
+    @Published var selectedTaskIDs: Set<UUID> = []
+    @Published var toast: TaskToast? = nil
+    /// Tasks just completed, kept visible in their list for a moment so the
+    /// completion animation can play: id → (list, position).
+    @Published internal(set) var lingering: [UUID: LingeringTask] = [:]
+    /// A completion waiting for its Proof of Done confirmation.
+    @Published var proofRequest: TaskItem? = nil
+    /// Task whose "Start focus" sheet is showing in the Tasks window.
+    @Published var focusSheetTask: TaskItem? = nil
+    /// Set to ask the Tasks window to focus its search field (⌘F).
+    @Published var focusSearch = false
+    @Published var pendingRestore: PendingRestore? = nil
+    @Published internal(set) var shortcutErrors: [String] = []
+    @Published var nextTaskID: UUID? = nil {
+        didSet { UserDefaults.standard.set(nextTaskID?.uuidString, forKey: Self.nextTaskKey) }
+    }
+    static let nextTaskKey = "FlowBreak.nextTaskID"
+    let taskRepo: TaskRepository
+    let hotKeys = HotKeyService()
+    var taskSaveWork: DispatchWorkItem?
+    var toastDismissWork: DispatchWorkItem?
+
     let calendar = Calendar.current
     var openWindow: ((AppWindow) -> Void)?
     var closePopover: (() -> Void)?
 
-    private let engine: TimerEngine
-    private let store: JSONFileStore
+    let engine: TimerEngine
+    let store: JSONFileStore
     private let settingsStore: SettingsStore
     private let notifications: NotificationService
     private let launchAtLogin = LaunchAtLoginService()
@@ -66,6 +94,14 @@ final class AppModel: ObservableObject {
             self.usage = try store.loadUsage()
         } catch {
             self.errorMessage = error.localizedDescription
+        }
+        let taskRepo = TaskRepository(store: store)
+        self.taskRepo = taskRepo
+        self.tasks = taskRepo.tasks
+        if let taskError = taskRepo.lastPersistenceError { self.errorMessage = taskError }
+        self.reflections = (try? store.loadReflections()) ?? []
+        if let saved = UserDefaults.standard.string(forKey: Self.nextTaskKey), let id = UUID(uuidString: saved) {
+            self.nextTaskID = taskRepo.task(id)?.isOpen == true ? id : nil
         }
         self.notificationStatus = self.notifications.authorization
     }
@@ -109,7 +145,13 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.objectWillChange.send() }
         })
 
+        observers.append(NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.ensureRecurringTasks() }
+        })
+
         configureTracking()
+        configureShortcuts()
+        ensureRecurringTasks()
         syncNotifications()
     }
 
@@ -132,9 +174,10 @@ final class AppModel: ObservableObject {
 
     var configuration: TimerConfiguration { settings.timerConfiguration }
 
-    var todaySummary: (focusTime: TimeInterval, breaks: Int, completed: Int) {
+    var todaySummary: (focusTime: TimeInterval, breaks: Int, completed: Int, tasksDone: Int) {
         let summary = StatisticsCalculator(calendar: calendar).summary(sessions: sessions, range: .today, now: now)
-        return (summary.focusTime, summary.breaksTaken, summary.focusSessionsCompleted)
+        let done = tasks.filter { $0.status == .completed && ($0.completedAt.map { calendar.isDate($0, inSameDayAs: now) } ?? false) }.count
+        return (summary.focusTime, summary.breaksTaken, summary.focusSessionsCompleted, done)
     }
 
     func summary(for range: InsightsRange) -> InsightsSummary {
@@ -154,8 +197,10 @@ final class AppModel: ObservableObject {
 
     // MARK: - Timer intents
 
+    /// Starts focus on the selected "next up" task, if there is one.
     func startFocus(minutes: Int? = nil) {
-        apply(engine.startFocus(at: Date(), duration: minutes.map { TimeInterval($0 * 60) }))
+        let taskID = nextTaskID.flatMap { taskRepo.task($0)?.isOpen == true ? $0 : nil }
+        startFocus(on: taskID, minutes: minutes, intent: nil)
     }
 
     func pause() { apply(engine.pause(at: Date())) }
@@ -197,7 +242,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func handle(notificationAction action: NotificationAction) {
+    func handle(notificationAction action: NotificationAction) {
         reconcile(reason: "notification")
         switch action {
         case .takeBreak:
@@ -233,6 +278,11 @@ final class AppModel: ObservableObject {
             || old.privateMode != settings.privateMode
             || old.excludedBundleIDs != settings.excludedBundleIDs {
             configureTracking()
+        }
+        if old.quickAddShortcut != settings.quickAddShortcut
+            || old.toggleFocusShortcut != settings.toggleFocusShortcut
+            || old.openTodayShortcut != settings.openTodayShortcut {
+            configureShortcuts()
         }
         if old.notificationsEnabled != settings.notificationsEnabled && settings.notificationsEnabled && notificationStatus == .notDetermined {
             notifications.requestAuthorization()
@@ -355,7 +405,7 @@ final class AppModel: ObservableObject {
         do {
             let data: Data
             switch kind {
-            case .json: data = try DataExporter.json(sessions: sessions, usage: usage)
+            case .json: data = try BackupService.encode(makeBackup())
             case .sessionsCSV: data = Data(DataExporter.sessionsCSV(sessions).utf8)
             case .usageCSV: data = Data(DataExporter.usageCSV(usage).utf8)
             }
@@ -369,6 +419,12 @@ final class AppModel: ObservableObject {
         engine.clearHistory()
         usage.removeAll()
         saveUsage()
+        taskRepo.replaceAll([])
+        saveTasksNow()
+        reflections = []
+        try? store.saveReflections([])
+        nextTaskID = nil
+        selectedTaskIDs = []
         refresh()
     }
 
@@ -390,7 +446,7 @@ final class AppModel: ObservableObject {
 
     // MARK: - Internals
 
-    private func reconcile(reason: String?) {
+    func reconcile(reason: String?) {
         now = Date()
         let events = engine.reconcile(at: now)
         if !events.isEmpty || reason != nil {
@@ -401,7 +457,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func apply(_ events: [EngineEvent], refreshNow: Bool = true) {
+    func apply(_ events: [EngineEvent], refreshNow: Bool = true) {
         if refreshNow { now = Date() }
         refresh()
         for event in events {
@@ -418,15 +474,20 @@ final class AppModel: ObservableObject {
         if !events.isEmpty { syncNotifications() }
     }
 
-    private func refresh() {
+    func refresh() {
         if state != engine.state { state = engine.state }
         if sessions != engine.sessions { sessions = engine.sessions }
         if let error = engine.lastPersistenceError {
             errorMessage = error
         }
+        if !settings.askForOutcome, engine.state.pendingCheckIn != nil {
+            engine.dismissCheckIn(at: Date())
+            if state != engine.state { state = engine.state }
+            if sessions != engine.sessions { sessions = engine.sessions }
+        }
     }
 
-    private func syncNotifications() {
+    func syncNotifications() {
         let plan = ReminderPlanner.plan(
             state: engine.state,
             settings: settings.reminderSettings,

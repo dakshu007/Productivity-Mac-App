@@ -52,13 +52,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // Clicking the Dock icon (when shown) opens the popover-equivalent: Insights.
-        if !flag { windows?.show(.insights) }
+        // Clicking the Dock icon (when shown) opens the Tasks window.
+        if !flag { windows?.show(.tasks) }
         return true
     }
 
     @objc func showSettings(_ sender: Any?) {
         windows?.show(.settings)
+    }
+
+    @objc func showTasks(_ sender: Any?) {
+        windows?.show(.tasks)
+    }
+
+    @objc func showQuickAdd(_ sender: Any?) {
+        windows?.show(.quickAdd)
     }
 
     @objc func showInsights(_ sender: Any?) {
@@ -82,6 +90,8 @@ enum MainMenu {
         appMenu.addItem(withTitle: "About FlowBreak", action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
+        appMenu.addItem(withTitle: "Tasks", action: #selector(AppDelegate.showTasks(_:)), keyEquivalent: "t")
+        appMenu.addItem(withTitle: "Quick Add Task…", action: #selector(AppDelegate.showQuickAdd(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: "Insights", action: #selector(AppDelegate.showInsights(_:)), keyEquivalent: "i")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide FlowBreak", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")

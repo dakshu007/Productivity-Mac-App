@@ -6,12 +6,17 @@ import SwiftUI
 final class WindowCoordinator: NSObject, NSWindowDelegate {
     private let model: AppModel
     private var windows: [AppWindow: NSWindow] = [:]
+    private lazy var quickAdd = QuickAddController(model: model)
 
     init(model: AppModel) {
         self.model = model
     }
 
     func show(_ kind: AppWindow) {
+        if kind == .quickAdd {
+            quickAdd.show()
+            return
+        }
         let window = windows[kind] ?? makeWindow(kind)
         windows[kind] = window
         if kind == .settings { model.refreshLaunchAtLogin() }
@@ -44,6 +49,14 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
             content = AnyView(GuidedBreakView(onClose: { [weak self] in self?.close(.guidedBreak) }))
             title = "Break"
             size = NSSize(width: 480, height: 600)
+        case .tasks:
+            content = AnyView(TasksView())
+            title = "FlowBreak Tasks"
+            size = NSSize(width: 1020, height: 680)
+        case .quickAdd:
+            content = AnyView(EmptyView())
+            title = ""
+            size = .zero
         }
 
         let hosting = NSHostingController(rootView: content.environmentObject(model))
@@ -51,7 +64,7 @@ final class WindowCoordinator: NSObject, NSWindowDelegate {
         window.title = title
         window.setContentSize(size)
         window.styleMask = [.titled, .closable, .miniaturizable]
-        if kind == .insights || kind == .settings {
+        if kind == .insights || kind == .settings || kind == .tasks {
             window.styleMask.insert(.resizable)
             window.contentMinSize = NSSize(width: size.width - 80, height: size.height - 120)
         }
