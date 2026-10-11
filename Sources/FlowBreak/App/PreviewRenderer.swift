@@ -353,8 +353,8 @@ enum PreviewRenderer {
             if let id = add(TaskDraft(title: "Write the launch blog post", status: .today, priority: .high, definitionOfDone: "Draft shared with the team for review", estimatedMinutes: 90, project: "Launch", tags: ["writing"])) {
                 ids.append(id)
                 try? repo.setBigThree(id, enabled: true, on: now, at: created)
-                try? repo.add(TaskDraft(title: "Outline", parentID: id), at: created)
-                try? repo.add(TaskDraft(title: "First draft", parentID: id), at: created)
+                _ = try? repo.add(TaskDraft(title: "Outline", parentID: id), at: created)
+                _ = try? repo.add(TaskDraft(title: "First draft", parentID: id), at: created)
                 if let outline = repo.subtasks(of: id).first { repo.complete(outline.id, at: created) }
                 repo.addProgressNote(id, text: "Intro and outline done", sessionID: nil, at: now.addingTimeInterval(-7200))
             }

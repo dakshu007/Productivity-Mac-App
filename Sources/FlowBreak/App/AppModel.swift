@@ -26,10 +26,10 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var state: EngineState
     @Published private(set) var sessions: [FocusSession]
-    @Published private(set) var usage: [UsageSample] = []
+    @Published var usage: [UsageSample] = []
     @Published private(set) var now = Date()
     @Published private(set) var notificationStatus: NotificationAuthorization = .unknown
-    @Published private(set) var errorMessage: String?
+    @Published var errorMessage: String?
     @Published private(set) var launchAtLoginStatus: LaunchAtLoginService.Status = .disabled
     @Published var settingsTab: SettingsTab = .focus
     @Published var settings: AppSettings {
@@ -37,14 +37,14 @@ final class AppModel: ObservableObject {
     }
 
     // Tasks
-    @Published internal(set) var tasks: [TaskItem] = []
-    @Published internal(set) var reflections: [WeeklyReflection] = []
+    @Published var tasks: [TaskItem] = []
+    @Published var reflections: [WeeklyReflection] = []
     @Published var taskList: TaskListKind = .today
     @Published var selectedTaskIDs: Set<UUID> = []
     @Published var toast: TaskToast? = nil
     /// Tasks just completed, kept visible in their list for a moment so the
     /// completion animation can play: id → (list, position).
-    @Published internal(set) var lingering: [UUID: LingeringTask] = [:]
+    @Published var lingering: [UUID: LingeringTask] = [:]
     /// A completion waiting for its Proof of Done confirmation.
     @Published var proofRequest: TaskItem? = nil
     /// Task whose "Start focus" sheet is showing in the Tasks window.
@@ -52,7 +52,7 @@ final class AppModel: ObservableObject {
     /// Set to ask the Tasks window to focus its search field (⌘F).
     @Published var focusSearch = false
     @Published var pendingRestore: PendingRestore? = nil
-    @Published internal(set) var shortcutErrors: [String] = []
+    @Published var shortcutErrors: [String] = []
     @Published var nextTaskID: UUID? = nil {
         didSet { UserDefaults.standard.set(nextTaskID?.uuidString, forKey: Self.nextTaskKey) }
     }
