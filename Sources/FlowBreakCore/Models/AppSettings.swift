@@ -113,6 +113,23 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var completionHaptics: Bool = true
     public var lastBackupAt: Date?
 
+    // Updates (network access only when the user allows it)
+    public var checkForUpdatesAutomatically: Bool = false
+    public var hasAnsweredUpdatePrompt: Bool = false
+    public var lastUpdateCheck: Date?
+
+    // Calendar (opt-in; requires calendar permission)
+    public var calendarAwareness: Bool = false
+    /// Calendars to consider; empty means all.
+    public var calendarIDs: [String] = []
+    public var holdRemindersDuringMeetings: Bool = true
+    public var focusBlockCalendarID: String?
+
+    // Distraction nudges (opt-in)
+    public var nudgesEnabled: Bool = false
+    public var distractingBundleIDs: [String] = []
+    public var nudgeCooldownMinutes: Int = 5
+
     // Behaviour
     public var showInDock: Bool = false
     public var hasCompletedOnboarding: Bool = false
@@ -129,6 +146,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case showInDock, hasCompletedOnboarding
         case quickAddShortcut, toggleFocusShortcut, openTodayShortcut, askForOutcome, moveToInProgressOnFocus
         case workdayEndMinute, hidePrivateTasksInInsights, completionHaptics, lastBackupAt
+        case checkForUpdatesAutomatically, hasAnsweredUpdatePrompt, lastUpdateCheck
+        case calendarAwareness, calendarIDs, holdRemindersDuringMeetings, focusBlockCalendarID
+        case nudgesEnabled, distractingBundleIDs, nudgeCooldownMinutes
     }
 
     public init(from decoder: Decoder) throws {
@@ -166,6 +186,16 @@ public struct AppSettings: Codable, Equatable, Sendable {
         hidePrivateTasksInInsights = (try? c.decodeIfPresent(Bool.self, forKey: .hidePrivateTasksInInsights)) ?? d.hidePrivateTasksInInsights
         completionHaptics = (try? c.decodeIfPresent(Bool.self, forKey: .completionHaptics)) ?? d.completionHaptics
         lastBackupAt = (try? c.decodeIfPresent(Date.self, forKey: .lastBackupAt)) ?? nil
+        checkForUpdatesAutomatically = (try? c.decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically)) ?? d.checkForUpdatesAutomatically
+        hasAnsweredUpdatePrompt = (try? c.decodeIfPresent(Bool.self, forKey: .hasAnsweredUpdatePrompt)) ?? d.hasAnsweredUpdatePrompt
+        lastUpdateCheck = (try? c.decodeIfPresent(Date.self, forKey: .lastUpdateCheck)) ?? nil
+        calendarAwareness = (try? c.decodeIfPresent(Bool.self, forKey: .calendarAwareness)) ?? d.calendarAwareness
+        calendarIDs = (try? c.decodeIfPresent([String].self, forKey: .calendarIDs)) ?? d.calendarIDs
+        holdRemindersDuringMeetings = (try? c.decodeIfPresent(Bool.self, forKey: .holdRemindersDuringMeetings)) ?? d.holdRemindersDuringMeetings
+        focusBlockCalendarID = (try? c.decodeIfPresent(String.self, forKey: .focusBlockCalendarID)) ?? nil
+        nudgesEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .nudgesEnabled)) ?? d.nudgesEnabled
+        distractingBundleIDs = (try? c.decodeIfPresent([String].self, forKey: .distractingBundleIDs)) ?? d.distractingBundleIDs
+        nudgeCooldownMinutes = (try? c.decodeIfPresent(Int.self, forKey: .nudgeCooldownMinutes)) ?? d.nudgeCooldownMinutes
         self = self.sanitized()
     }
 
@@ -185,6 +215,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         s.quietHours.startMinute = min(max(s.quietHours.startMinute, 0), 24 * 60 - 1)
         s.quietHours.endMinute = min(max(s.quietHours.endMinute, 0), 24 * 60 - 1)
         s.workdayEndMinute = min(max(s.workdayEndMinute, 0), 24 * 60 - 1)
+        s.nudgeCooldownMinutes = min(max(s.nudgeCooldownMinutes, 1), 60)
         return s
     }
 

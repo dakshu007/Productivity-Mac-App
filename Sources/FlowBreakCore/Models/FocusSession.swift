@@ -112,6 +112,8 @@ public struct FocusSession: Codable, Equatable, Identifiable, Sendable {
     public var intent: String?
     public var outcome: SessionOutcome?
     public var progressNote: String?
+    /// Distraction nudges shown during this focus session (only when nudges are on).
+    public var nudges: Int?
 
     public init(
         id: UUID = UUID(),

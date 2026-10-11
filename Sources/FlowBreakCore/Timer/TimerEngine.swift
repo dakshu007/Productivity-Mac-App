@@ -329,6 +329,16 @@ public final class TimerEngine {
         return events
     }
 
+    /// Counts a distraction nudge on the running focus session.
+    public func recordNudge(at now: Date) {
+        reconcile(at: now)
+        guard var session = state.current, session.kind.isFocus, session.status == .running else { return }
+        session.nudges = (session.nudges ?? 0) + 1
+        state.current = session
+        if let index = sessions.lastIndex(where: { $0.id == session.id }) { sessions[index] = session }
+        persist()
+    }
+
     /// Closes the check-in without an answer.
     public func dismissCheckIn(at now: Date) {
         reconcile(at: now)

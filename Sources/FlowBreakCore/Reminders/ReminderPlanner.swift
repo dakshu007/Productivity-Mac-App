@@ -53,7 +53,8 @@ public enum ReminderPlanner {
         settings: ReminderSettings,
         defaultBreakDuration: TimeInterval,
         now: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        busy: [DateInterval] = []
     ) -> [PlannedReminder] {
         guard settings.enabled else { return [] }
         let repeats = min(max(settings.repeatCount, 0), AppSettings.maxRepeatCount)
@@ -108,10 +109,40 @@ public enum ReminderPlanner {
             break
         }
 
+        result = holdDuringMeetings(result, busy: busy)
+
         return result.filter { reminder in
             guard reminder.date > now else { return false }
             if let quiet = settings.quietHours, quiet.contains(reminder.date, calendar: calendar) { return false }
             return true
         }
+    }
+
+    /// Reminders that would fire during a meeting are held and replaced by a single
+    /// reminder when that meeting ends.
+    static func holdDuringMeetings(_ reminders: [PlannedReminder], busy: [DateInterval]) -> [PlannedReminder] {
+        let meetings = CalendarPlanning.merged(busy)
+        guard !meetings.isEmpty else { return reminders }
+        var kept: [PlannedReminder] = []
+        var deferred: [Date: PlannedReminder] = [:]
+        for reminder in reminders {
+            if let meeting = meetings.first(where: { $0.start <= reminder.date && reminder.date < $0.end }) {
+                // Keep the first (most informative) reminder held by each meeting.
+                if deferred[meeting.end] == nil {
+                    var moved = reminder
+                    moved.id = reminder.id + ".aftermeeting"
+                    moved.date = meeting.end
+                    deferred[meeting.end] = moved
+                }
+            } else {
+                kept.append(reminder)
+            }
+        }
+        for (end, reminder) in deferred {
+            // The held reminder replaces anything already due right as the meeting ends.
+            kept.removeAll { abs($0.date.timeIntervalSince(end)) < 60 }
+            kept.append(reminder)
+        }
+        return kept.sorted { $0.date < $1.date }
     }
 }
