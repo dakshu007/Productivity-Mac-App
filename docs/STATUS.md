@@ -75,7 +75,7 @@ Status legend:
 | Optional Definition of Done / Proof of Done | Verified (render) |
 | Start a focus session from a task | Verified (tests + render) |
 | Persist task–session relationships | Verified (tests), including relaunch, pause/resume, reassign and old-file decoding |
-| Tests for task persistence and completion | Verified (tests): 40+ new test cases |
+| Tests for task persistence and completion | Verified (tests): 34 new test cases (78 in total) |
 | All data local | Yes. There is no networking code in the app. |
 | Existing timer behaviour intact | Verified (tests): all original timer tests pass unchanged |
 
