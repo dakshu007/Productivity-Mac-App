@@ -49,6 +49,7 @@ enum PreviewRenderer {
         let defaults = UserDefaults(suiteName: suite) ?? .standard
         var settings = AppSettings()
         settings.hasCompletedOnboarding = true
+        settings.hasAnsweredUpdatePrompt = true
         let settingsStore = SettingsStore(defaults: defaults)
         settingsStore.save(settings)
         let model = AppModel(store: JSONFileStore(directory: directory), settingsStore: settingsStore, notifications: NotificationService(enabled: false))
@@ -195,7 +196,7 @@ enum PreviewRenderer {
                 model.settingsTab = .general
                 return AnyView(SettingsView().environmentObject(model))
             },
-            Scenario(name: "34-settings-about", size: NSSize(width: 580, height: 600)) { model in
+            Scenario(name: "34-settings-about", size: NSSize(width: 580, height: 900)) { model in
                 model.settingsTab = .about
                 return AnyView(SettingsView().environmentObject(model))
             },
@@ -263,6 +264,57 @@ enum PreviewRenderer {
                     engine.reconcile(at: now)
                 }
                 return popover(model)
+            },
+            Scenario(name: "70-popover-meeting-update", size: nil) { model in
+                let now = Date()
+                model.update { $0.calendarAwareness = true }
+                model.busyBlocks = [
+                    BusyBlock(title: "Design review", interval: DateInterval(start: now.addingTimeInterval(25 * 60), duration: 30 * 60)),
+                ]
+                model.updateState = .available(UpdateManifest(version: "1.3.0", build: 42, dmgURL: URL(fileURLWithPath: "/tmp/FlowBreak.dmg")))
+                model.driveForPreview(now: now) { _ in }
+                return popover(model)
+            },
+            Scenario(name: "71-popover-in-meeting", size: nil) { model in
+                let now = Date()
+                model.update { $0.calendarAwareness = true }
+                model.busyBlocks = [
+                    BusyBlock(title: "Weekly sync", interval: DateInterval(start: now.addingTimeInterval(-10 * 60), duration: 40 * 60)),
+                ]
+                model.driveForPreview(now: now) { engine in
+                    engine.startFocus(at: now.addingTimeInterval(-50 * minute))
+                    engine.reconcile(at: now)
+                }
+                return popover(model)
+            },
+            Scenario(name: "72-popover-update-prompt", size: nil) { model in
+                model.update { $0.hasAnsweredUpdatePrompt = false }
+                model.driveForPreview(now: Date()) { _ in }
+                return popover(model)
+            },
+            Scenario(name: "73-nudge", size: NSSize(width: 380, height: 150)) { model in
+                let ids = seedTasks(model)
+                let task = model.task(ids.first)
+                return AnyView(NudgeView(appName: "Slack", taskTitle: task?.title, remaining: 21 * 60 + 14, onBack: {}, onSave: {}, onAllow: {}, onBreak: {}).environmentObject(model))
+            },
+            Scenario(name: "74-schedule-block", size: NSSize(width: 440, height: 360)) { model in
+                let ids = seedTasks(model)
+                let task = model.task(ids.first) ?? TaskItem(title: "Example", createdAt: Date())
+                model.update { $0.calendarAwareness = true }
+                model.busyBlocks = [BusyBlock(title: "Lunch with Sam", interval: DateInterval(start: Date().addingTimeInterval(3600), duration: 3600))]
+                return AnyView(ScheduleBlockView(task: task, suggestedStart: Date().addingTimeInterval(3000), onDone: {}).environmentObject(model))
+            },
+            Scenario(name: "36-settings-calendar", size: NSSize(width: 580, height: 560)) { model in
+                model.settingsTab = .calendar
+                return AnyView(SettingsView().environmentObject(model))
+            },
+            Scenario(name: "37-settings-focus-nudges", size: NSSize(width: 580, height: 1000)) { model in
+                model.settingsTab = .focus
+                model.update {
+                    $0.nudgesEnabled = true
+                    $0.distractingBundleIDs = ["com.tinyspeck.slackmacgap", "com.apple.Safari"]
+                }
+                return AnyView(SettingsView().environmentObject(model))
             },
             Scenario(name: "23-insights-tasks", size: NSSize(width: 760, height: 2300)) { model in
                 seedHistory(model)

@@ -38,6 +38,17 @@ jobs:
       - name: Build universal app
         run: Scripts/build_universal.sh
 
+      - name: Diagnose App Intents toolchain (temporary)
+        continue-on-error: true
+        run: |
+          xcrun --find appintentsmetadataprocessor || true
+          xcrun appintentsmetadataprocessor --help 2>&1 | head -80 || true
+          echo "--- const values"; find .build -name "*.swiftconstvalues" | head -20
+          echo "--- const protocols"; find .build -name "*const_extract_protocols.json" | head; cat "$(find .build -name 'FlowBreak_const_extract_protocols.json' | head -n1)" 2>/dev/null | head -c 2000 || true
+          echo "--- lists"; find .build -name "FlowBreak.SwiftFileList" -o -name "FlowBreak.SwiftConstValuesFileList" -o -name "FlowBreak.DependencyMetadataFileList" | head
+          echo "--- intents dirs"; find .build -name "*appintents*" | head -20
+          echo "--- objects"; find .build/apple -path "*FlowBreak.build*" -name "*.o" | head -5
+
       - name: Check Shortcuts (App Intents) metadata
         run: |
           META=build/FlowBreak.app/Contents/Resources/Metadata.appintents
